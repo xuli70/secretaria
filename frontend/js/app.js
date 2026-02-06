@@ -139,6 +139,11 @@ let currentConversationId = null;
 let conversations = [];
 let isStreaming = false;
 
+// --- File upload state ---
+let pendingFile = null;     // File object from picker
+let pendingFileId = null;   // file ID after upload completes
+let isUploading = false;
+
 // --- DOM refs ---
 const sidebar = $('#sidebar');
 const sidebarOverlay = $('#sidebar-overlay');
@@ -150,6 +155,12 @@ const inputBar = $('#input-bar');
 const msgInput = $('#msg-input');
 const btnSend = $('#btn-send');
 const chatTitle = $('#chat-title');
+const fileInput = $('#file-input');
+const btnAttach = $('#btn-attach');
+const attachmentPreview = $('#attachment-preview');
+const attachmentPreviewName = $('#attachment-preview-name');
+const attachmentPreviewSize = $('#attachment-preview-size');
+const btnRemoveAttachment = $('#btn-remove-attachment');
 
 // --- Sidebar toggle ---
 
@@ -220,12 +231,13 @@ async function selectConversation(id) {
     welcomeMsg.hidden = true;
     inputBar.hidden = false;
     renderConversationList();
+    clearPendingFile();
 
     // Load messages
     chatMessages.innerHTML = '';
     try {
         const messages = await apiGet(`/api/chat/conversations/${id}/messages`);
-        messages.forEach(m => renderMessage(m.role, m.content, m.created_at));
+        messages.forEach(m => renderMessage(m.role, m.content, m.created_at, m.files));
         scrollToBottom();
     } catch (err) {
         console.error('Error loading messages:', err);
@@ -247,22 +259,153 @@ async function deleteConversation(id) {
             chatMessages.appendChild(welcomeMsg);
             inputBar.hidden = true;
             chatTitle.textContent = 'Secretaria';
+            clearPendingFile();
         }
     } catch (err) {
         console.error('Error deleting conversation:', err);
     }
 }
 
+// --- File Upload ---
+
+const ALLOWED_EXTENSIONS = ['.pdf', '.docx', '.xlsx', '.txt', '.jpg', '.jpeg', '.png', '.webp'];
+const MAX_UPLOAD_SIZE = 20 * 1024 * 1024; // 20 MB
+
+btnAttach.addEventListener('click', () => {
+    if (isUploading || isStreaming) return;
+    fileInput.click();
+});
+
+fileInput.addEventListener('change', async () => {
+    const file = fileInput.files[0];
+    fileInput.value = ''; // reset so same file can be re-selected
+    if (!file) return;
+
+    // Validate extension
+    const ext = '.' + file.name.split('.').pop().toLowerCase();
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+        alert('Tipo de archivo no permitido: ' + ext);
+        return;
+    }
+
+    // Validate size
+    if (file.size > MAX_UPLOAD_SIZE) {
+        alert('Archivo demasiado grande (max 20 MB)');
+        return;
+    }
+
+    // Show preview
+    pendingFile = file;
+    pendingFileId = null;
+    attachmentPreviewName.textContent = file.name;
+    attachmentPreviewSize.textContent = formatFileSize(file.size);
+    attachmentPreview.hidden = false;
+
+    // Upload in background
+    await uploadFile(file);
+});
+
+btnRemoveAttachment.addEventListener('click', () => {
+    clearPendingFile();
+});
+
+function clearPendingFile() {
+    pendingFile = null;
+    pendingFileId = null;
+    isUploading = false;
+    attachmentPreview.hidden = true;
+    attachmentPreviewName.textContent = '';
+    attachmentPreviewSize.textContent = '';
+    btnAttach.disabled = false;
+}
+
+async function uploadFile(file) {
+    if (!currentConversationId) return;
+
+    isUploading = true;
+    btnAttach.disabled = true;
+    attachmentPreviewSize.textContent = 'Subiendo...';
+
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const res = await fetch(
+            API + `/api/upload/conversations/${currentConversationId}/files`,
+            {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${getToken()}` },
+                body: formData,
+            }
+        );
+
+        if (res.status === 401) {
+            clearAuth();
+            showScreen('login');
+            throw new Error('Sesion expirada');
+        }
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Error subiendo archivo');
+
+        pendingFileId = data.id;
+        attachmentPreviewSize.textContent = formatFileSize(file.size);
+    } catch (err) {
+        alert('Error subiendo archivo: ' + err.message);
+        clearPendingFile();
+    } finally {
+        isUploading = false;
+        btnAttach.disabled = false;
+    }
+}
+
 // --- Messages ---
 
-function renderMessage(role, content, timestamp) {
+function renderMessage(role, content, timestamp, files) {
     const bubble = document.createElement('div');
     bubble.className = `msg-bubble ${role}`;
 
-    const textEl = document.createElement('div');
-    textEl.className = 'msg-text';
-    textEl.textContent = content;
-    bubble.appendChild(textEl);
+    // Render file attachments
+    if (files && files.length > 0) {
+        for (const f of files) {
+            if (f.file_type === 'image') {
+                const img = document.createElement('img');
+                img.className = 'msg-file-image';
+                img.src = API + `/api/upload/files/${f.id}`;
+                img.alt = f.filename;
+                img.loading = 'lazy';
+                img.addEventListener('click', () => {
+                    window.open(API + `/api/upload/files/${f.id}`, '_blank');
+                });
+                bubble.appendChild(img);
+            } else {
+                const fileEl = document.createElement('a');
+                fileEl.className = 'msg-file';
+                fileEl.href = API + `/api/upload/files/${f.id}`;
+                fileEl.target = '_blank';
+                fileEl.rel = 'noopener';
+
+                const ext = f.filename.split('.').pop().toUpperCase();
+                fileEl.innerHTML = `
+                    <div class="file-icon">${escapeHtml(ext)}</div>
+                    <div class="msg-file-info">
+                        <div class="msg-file-name">${escapeHtml(f.filename)}</div>
+                        <div class="msg-file-size">${formatFileSize(f.size_bytes)}</div>
+                    </div>
+                `;
+                bubble.appendChild(fileEl);
+            }
+        }
+    }
+
+    // Render text content (skip placeholder if we have files)
+    const displayContent = (files && files.length > 0 && content === '[Archivo adjunto]') ? '' : content;
+    if (displayContent) {
+        const textEl = document.createElement('div');
+        textEl.className = 'msg-text';
+        textEl.textContent = displayContent;
+        bubble.appendChild(textEl);
+    }
 
     if (timestamp) {
         const timeEl = document.createElement('div');
@@ -281,15 +424,29 @@ function scrollToBottom() {
 
 async function sendMessage() {
     const content = msgInput.value.trim();
-    if (!content || !currentConversationId || isStreaming) return;
+    const hasFile = pendingFileId !== null;
+
+    if ((!content && !hasFile) || !currentConversationId || isStreaming || isUploading) return;
 
     isStreaming = true;
     btnSend.disabled = true;
     msgInput.value = '';
     autoResizeInput();
 
-    // Render user bubble
-    renderMessage('user', content, new Date().toISOString());
+    // Capture file info before clearing
+    const fileIds = hasFile ? [pendingFileId] : [];
+    const fileForBubble = hasFile && pendingFile ? {
+        id: pendingFileId,
+        filename: pendingFile.name,
+        file_type: isImageFile(pendingFile.name) ? 'image' : 'document',
+        size_bytes: pendingFile.size,
+    } : null;
+
+    clearPendingFile();
+
+    // Render user bubble with attachment
+    const userFiles = fileForBubble ? [fileForBubble] : [];
+    renderMessage('user', content || '[Archivo adjunto]', new Date().toISOString(), userFiles);
     scrollToBottom();
 
     // Show typing indicator
@@ -297,15 +454,25 @@ async function sendMessage() {
     scrollToBottom();
 
     // Create assistant bubble for streaming
-    const aiBubble = renderMessage('assistant', '', null);
+    const aiBubble = renderMessage('assistant', '', null, null);
     const textEl = aiBubble.querySelector('.msg-text');
+    if (!textEl) {
+        // Add text element since renderMessage skips empty content
+        const newTextEl = document.createElement('div');
+        newTextEl.className = 'msg-text';
+        aiBubble.appendChild(newTextEl);
+    }
+    const streamTextEl = aiBubble.querySelector('.msg-text');
     aiBubble.style.display = 'none'; // hide until first chunk
 
     try {
+        const body = { content };
+        if (fileIds.length > 0) body.file_ids = fileIds;
+
         const res = await fetch(API + `/api/chat/conversations/${currentConversationId}/messages`, {
             method: 'POST',
             headers: authHeaders(),
-            body: JSON.stringify({ content }),
+            body: JSON.stringify(body),
         });
 
         if (res.status === 401) {
@@ -340,7 +507,7 @@ async function sendMessage() {
                 fullText += data;
                 typingIndicator.hidden = true;
                 aiBubble.style.display = '';
-                textEl.textContent = fullText;
+                streamTextEl.textContent = fullText;
                 scrollToBottom();
             }
         }
@@ -361,7 +528,7 @@ async function sendMessage() {
     } catch (err) {
         typingIndicator.hidden = true;
         aiBubble.style.display = '';
-        textEl.textContent = 'Error: ' + err.message;
+        streamTextEl.textContent = 'Error: ' + err.message;
         aiBubble.classList.add('error');
     } finally {
         isStreaming = false;
@@ -398,6 +565,7 @@ $('#btn-logout').addEventListener('click', () => {
     clearAuth();
     currentConversationId = null;
     conversations = [];
+    clearPendingFile();
     showScreen('login');
 });
 
@@ -423,6 +591,18 @@ function formatTime(isoStr) {
     return new Date(isoStr).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
 }
 
+function formatFileSize(bytes) {
+    if (bytes == null) return '';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function isImageFile(filename) {
+    const ext = '.' + filename.split('.').pop().toLowerCase();
+    return ['.jpg', '.jpeg', '.png', '.webp'].includes(ext);
+}
+
 // --- App Init ---
 
 function enterApp() {
@@ -433,6 +613,7 @@ function enterApp() {
     inputBar.hidden = true;
     chatTitle.textContent = 'Secretaria';
     currentConversationId = null;
+    clearPendingFile();
     loadConversations();
 }
 

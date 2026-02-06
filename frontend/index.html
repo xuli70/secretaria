@@ -72,10 +72,24 @@
 
             <!-- Input Bar -->
             <div id="input-bar" class="input-bar" hidden>
-                <textarea id="msg-input" class="msg-input" placeholder="Escribe un mensaje..." rows="1"></textarea>
-                <button id="btn-send" class="btn-send" title="Enviar">
-                    <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M1.101 21.757L23.8 12.028 1.101 2.3l.011 7.912 13.623 1.816-13.623 1.817-.011 7.912z"/></svg>
-                </button>
+                <!-- Attachment preview -->
+                <div id="attachment-preview" class="attachment-preview" hidden>
+                    <div class="attachment-preview-info">
+                        <span id="attachment-preview-name" class="attachment-preview-name"></span>
+                        <span id="attachment-preview-size" class="attachment-preview-size"></span>
+                    </div>
+                    <button id="btn-remove-attachment" class="btn-remove-attachment" title="Quitar">&times;</button>
+                </div>
+                <div class="input-bar-row">
+                    <input type="file" id="file-input" accept=".pdf,.docx,.xlsx,.txt,.jpg,.jpeg,.png,.webp" hidden>
+                    <button id="btn-attach" class="btn-attach" title="Adjuntar archivo">
+                        <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M16.5 6.75v10.58a4.25 4.25 0 1 1-8.5 0V5.75a2.75 2.75 0 1 1 5.5 0v10.58a1.25 1.25 0 0 1-2.5 0V6.75h-1.5v9.58a2.75 2.75 0 1 0 5.5 0V5.75a4.25 4.25 0 0 0-8.5 0v11.58a5.75 5.75 0 1 0 11.5 0V6.75h-1.5z"/></svg>
+                    </button>
+                    <textarea id="msg-input" class="msg-input" placeholder="Escribe un mensaje..." rows="1"></textarea>
+                    <button id="btn-send" class="btn-send" title="Enviar">
+                        <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M1.101 21.757L23.8 12.028 1.101 2.3l.011 7.912 13.623 1.816-13.623 1.817-.011 7.912z"/></svg>
+                    </button>
+                </div>
             </div>
         </div>
     </div>

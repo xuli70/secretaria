@@ -24,5 +24,27 @@ class Settings:
     DATA_DIR: str = os.getenv("DATA_DIR", "/data")
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:////data/secretaria.db")
 
+    # Upload
+    MAX_UPLOAD_SIZE: int = 20 * 1024 * 1024  # 20 MB
+
+    ALLOWED_EXTENSIONS: set[str] = {
+        ".pdf", ".docx", ".xlsx", ".txt",
+        ".jpg", ".jpeg", ".png", ".webp",
+    }
+
+    DOCUMENT_EXTENSIONS: set[str] = {".pdf", ".docx", ".xlsx", ".txt"}
+    IMAGE_EXTENSIONS: set[str] = {".jpg", ".jpeg", ".png", ".webp"}
+
+    MIME_TYPES: dict[str, str] = {
+        ".pdf": "application/pdf",
+        ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ".txt": "text/plain",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".webp": "image/webp",
+    }
+
 
 settings = Settings()

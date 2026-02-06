@@ -9,6 +9,7 @@ from backend.config import settings
 from backend.database import init_db
 from backend.routers import auth as auth_router
 from backend.routers import chat as chat_router
+from backend.routers import upload as upload_router
 
 
 @asynccontextmanager
@@ -43,6 +44,7 @@ def health():
 # Routers
 app.include_router(auth_router.router)
 app.include_router(chat_router.router)
+app.include_router(upload_router.router)
 
 # Static frontend files — must be last (catches all unmatched paths)
 frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend")
