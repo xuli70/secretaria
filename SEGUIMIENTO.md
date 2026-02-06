@@ -3,7 +3,7 @@
 > **Objetivo:** Aplicación web mobile-first de asistente personal (secretaria) con chat continuo, gestión documental, generación de documentos y reenvío por Telegram
 > **Carpeta:** D:\MINIMAX\Secretaria
 > **Ultima actualizacion:** 2026-02-06
-> **Estado global:** Fase 4 de 6 (completada)
+> **Estado global:** Fase 5 de 6 (completada)
 
 ---
 
@@ -11,7 +11,7 @@
 
 Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases de desarrollo. El cerebro es MINIMAX AI (chat) + Perplexity (búsqueda externa). La interfaz es un chat oscuro tipo WhatsApp optimizado para teléfono (PWA). Backend en Python/FastAPI, SQLite como BD, Docker para contenedores, Coolify para despliegue final desde GitHub.
 
-**PROXIMO PASO:** Iniciar Fase 5: Telegram.
+**PROXIMO PASO:** Iniciar Fase 6: Deploy Coolify.
 
 ---
 
@@ -36,6 +36,8 @@ Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases 
 | Archivos upload | Un archivo por mensaje, max 20MB, sin OCR | 2026-02-06 |
 | Tipos soportados | PDF, DOCX, XLSX, TXT (documentos) + JPG, JPEG, PNG, WEBP (imagenes) | 2026-02-06 |
 | Extraccion texto | pypdf (PDF), python-docx (DOCX), openpyxl (XLSX), plain read (TXT) | 2026-02-06 |
+| Generacion docs | Toggle modo documento, DOCX via python-docx post-stream, evento SSE [FILE:{json}] | 2026-02-06 |
+| Modos exclusivos | searchMode y docMode mutuamente excluyentes (activar uno desactiva el otro) | 2026-02-06 |
 
 ---
 
@@ -236,8 +238,39 @@ Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases 
 
 ## Fase 5: Telegram
 
-> **Estado:** [ ] Pendiente
+> **Estado:** [x] Completada
 > **Prioridad:** Media
+
+### Tareas
+- [x] Crear backend/services/telegram_bot.py (get_me, send_message, send_document via httpx async)
+- [x] Crear backend/routers/telegram.py (bot-status, CRUD contactos, send forward, history)
+- [x] Registrar telegram_router en backend/main.py (antes del static mount)
+- [x] Frontend: boton Telegram en header (icono avion, color #0088cc)
+- [x] Frontend: modal de contactos (overlay + panel bottom-sheet, lista, formulario agregar, status bot)
+- [x] Frontend: boton forward en burbujas assistant (icono Telegram, opacity hover)
+- [x] Frontend: dropdown de contactos al click forward → seleccionar → enviar → feedback
+- [x] Frontend: estado telegramContacts, loadTelegramContacts al enterApp
+- [x] Frontend: estilos Telegram (modal, contactos, forward btn, menu dropdown, feedback animado)
+
+### Verificacion
+- [x] `docker compose up --build` arranca sin errores
+- [x] GET /api/telegram/bot-status → estado del bot (configured: false sin token)
+- [x] Endpoints protegidos con auth (403 sin token)
+- [ ] CRUD contactos funciona (crear, listar, eliminar)
+- [ ] POST /api/telegram/send → envia texto a Telegram
+- [ ] POST /api/telegram/send (con archivo adjunto) → envia documento
+- [ ] Modal de contactos funciona en movil
+- [ ] Boton forward en burbujas assistant → selector → envio → feedback
+- [ ] Sin TELEGRAM_BOT_TOKEN → mensaje amigable
+- [ ] Historial de envios funciona
+
+### Archivos creados/modificados
+- `backend/services/telegram_bot.py` — CREADO: servicio Telegram Bot API (get_me, send_message, send_document con httpx async)
+- `backend/routers/telegram.py` — CREADO: router /api/telegram (bot-status, CRUD contactos, send forward con texto+archivos, history)
+- `backend/main.py` — Registrado telegram_router
+- `frontend/index.html` — Boton Telegram en header, modal de contactos (overlay + panel + form)
+- `frontend/css/style.css` — Estilos btn-telegram, telegram-modal, telegram-contact-item, btn-forward, forward-menu, forward-status
+- `frontend/js/app.js` — Estado telegramContacts, loadTelegramContacts, addTelegramContact, deleteTelegramContact, forwardToTelegram, showForwardMenu, openTelegramModal, renderMessage con forward button y data-msg-id
 
 ---
 
@@ -264,3 +297,4 @@ Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases 
 | 4 | 2026-02-06 | Fase 2 | Fase 2 completada: file_handler service, upload router, chat.py con files, frontend clip+preview+upload | Iniciar Fase 3: Perplexity + busqueda externa |
 | 5 | 2026-02-06 | Fase 3 | Fase 3 completada: perplexity service, search toggle, routing condicional chat/search | Iniciar Fase 4: Generador de documentos |
 | 6 | 2026-02-06 | Fase 4 | Fase 4 completada: doc_generator service, documents router, toggle documento, generacion DOCX post-stream, cards de descarga | Iniciar Fase 5: Telegram |
+| 7 | 2026-02-06 | Fase 5 | Fase 5 completada: telegram_bot service, telegram router, modal contactos, forward button en burbujas, dropdown selector, feedback animado | Iniciar Fase 6: Deploy Coolify |

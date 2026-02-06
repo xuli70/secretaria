@@ -146,6 +146,9 @@ let pendingFile = null;     // File object from picker
 let pendingFileId = null;   // file ID after upload completes
 let isUploading = false;
 
+// --- Telegram state ---
+let telegramContacts = [];
+
 // --- DOM refs ---
 const sidebar = $('#sidebar');
 const sidebarOverlay = $('#sidebar-overlay');
@@ -165,6 +168,12 @@ const attachmentPreviewSize = $('#attachment-preview-size');
 const btnRemoveAttachment = $('#btn-remove-attachment');
 const btnSearchToggle = $('#btn-search-toggle');
 const btnDocToggle = $('#btn-doc-toggle');
+const btnTelegram = $('#btn-telegram');
+const telegramOverlay = $('#telegram-overlay');
+const telegramModal = $('#telegram-modal');
+const telegramContactsList = $('#telegram-contacts-list');
+const telegramBotStatus = $('#telegram-bot-status');
+const telegramAddForm = $('#telegram-add-form');
 
 // --- Sidebar toggle ---
 
@@ -263,7 +272,7 @@ async function selectConversation(id) {
     chatMessages.innerHTML = '';
     try {
         const messages = await apiGet(`/api/chat/conversations/${id}/messages`);
-        messages.forEach(m => renderMessage(m.role, m.content, m.created_at, m.files));
+        messages.forEach(m => renderMessage(m.role, m.content, m.created_at, m.files, m.id));
         scrollToBottom();
     } catch (err) {
         console.error('Error loading messages:', err);
@@ -385,9 +394,179 @@ async function uploadFile(file) {
     }
 }
 
+// --- Telegram ---
+
+function openTelegramModal() {
+    telegramModal.classList.add('active');
+    telegramOverlay.classList.add('active');
+    renderTelegramContacts();
+    checkBotStatus();
+}
+
+function closeTelegramModal() {
+    telegramModal.classList.remove('active');
+    telegramOverlay.classList.remove('active');
+}
+
+btnTelegram.addEventListener('click', openTelegramModal);
+telegramOverlay.addEventListener('click', closeTelegramModal);
+$('#btn-close-telegram').addEventListener('click', closeTelegramModal);
+
+async function checkBotStatus() {
+    try {
+        const data = await apiGet('/api/telegram/bot-status');
+        if (data.configured && data.bot) {
+            telegramBotStatus.textContent = '@' + data.bot.username;
+            telegramBotStatus.classList.add('online');
+        } else {
+            telegramBotStatus.textContent = 'No configurado';
+            telegramBotStatus.classList.remove('online');
+        }
+    } catch {
+        telegramBotStatus.textContent = 'Error';
+        telegramBotStatus.classList.remove('online');
+    }
+}
+
+async function loadTelegramContacts() {
+    try {
+        telegramContacts = await apiGet('/api/telegram/contacts');
+    } catch {
+        telegramContacts = [];
+    }
+}
+
+function renderTelegramContacts() {
+    telegramContactsList.innerHTML = '';
+    if (telegramContacts.length === 0) {
+        telegramContactsList.innerHTML = '<div class="forward-menu-empty">Sin contactos. Agrega uno abajo.</div>';
+        return;
+    }
+    telegramContacts.forEach(c => {
+        const el = document.createElement('div');
+        el.className = 'telegram-contact-item';
+        el.innerHTML = `
+            <div class="telegram-contact-info">
+                <div class="telegram-contact-name">${escapeHtml(c.name)}</div>
+                <div class="telegram-contact-chatid">${escapeHtml(c.chat_id)}</div>
+            </div>
+            <button class="telegram-contact-delete" title="Eliminar">&times;</button>
+        `;
+        el.querySelector('.telegram-contact-delete').addEventListener('click', () => {
+            deleteTelegramContact(c.id);
+        });
+        telegramContactsList.appendChild(el);
+    });
+}
+
+telegramAddForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = $('#tg-name').value.trim();
+    const chatId = $('#tg-chat-id').value.trim();
+    if (!name || !chatId) return;
+    await addTelegramContact(name, chatId);
+    $('#tg-name').value = '';
+    $('#tg-chat-id').value = '';
+});
+
+async function addTelegramContact(name, chatId) {
+    try {
+        const contact = await apiPost('/api/telegram/contacts', { name, chat_id: chatId });
+        telegramContacts.unshift(contact);
+        renderTelegramContacts();
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+async function deleteTelegramContact(id) {
+    if (!confirm('Eliminar contacto?')) return;
+    try {
+        await apiDelete(`/api/telegram/contacts/${id}`);
+        telegramContacts = telegramContacts.filter(c => c.id !== id);
+        renderTelegramContacts();
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+async function forwardToTelegram(messageId, contactId, bubbleEl) {
+    // Remove any existing forward menu
+    closeForwardMenus();
+
+    // Show sending feedback
+    showForwardStatus(bubbleEl, 'sending', 'Enviando...');
+
+    try {
+        const result = await apiPost('/api/telegram/send', {
+            message_id: messageId,
+            contact_id: contactId,
+        });
+        if (result.ok) {
+            showForwardStatus(bubbleEl, 'sent', 'Enviado');
+        } else {
+            showForwardStatus(bubbleEl, 'error', result.detail || 'Error');
+        }
+    } catch (err) {
+        showForwardStatus(bubbleEl, 'error', err.message);
+    }
+}
+
+function showForwardStatus(bubbleEl, type, text) {
+    // Remove previous status
+    const prev = bubbleEl.querySelector('.forward-status');
+    if (prev) prev.remove();
+
+    const el = document.createElement('span');
+    el.className = `forward-status ${type}`;
+    el.textContent = text;
+    bubbleEl.appendChild(el);
+
+    // Auto-remove after animation
+    setTimeout(() => el.remove(), 2200);
+}
+
+function showForwardMenu(bubbleEl, messageId) {
+    closeForwardMenus();
+
+    const menu = document.createElement('div');
+    menu.className = 'forward-menu';
+
+    if (telegramContacts.length === 0) {
+        menu.innerHTML = '<div class="forward-menu-empty">Sin contactos</div>';
+    } else {
+        telegramContacts.forEach(c => {
+            const item = document.createElement('div');
+            item.className = 'forward-menu-item';
+            item.textContent = c.name;
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+                forwardToTelegram(messageId, c.id, bubbleEl);
+            });
+            menu.appendChild(item);
+        });
+    }
+
+    bubbleEl.appendChild(menu);
+
+    // Close on outside click
+    setTimeout(() => {
+        document.addEventListener('click', closeForwardMenusHandler);
+    }, 0);
+}
+
+function closeForwardMenus() {
+    document.querySelectorAll('.forward-menu').forEach(m => m.remove());
+    document.removeEventListener('click', closeForwardMenusHandler);
+}
+
+function closeForwardMenusHandler() {
+    closeForwardMenus();
+}
+
 // --- Messages ---
 
-function renderMessage(role, content, timestamp, files) {
+function renderMessage(role, content, timestamp, files, messageId) {
     const bubble = document.createElement('div');
     bubble.className = `msg-bubble ${role}`;
 
@@ -441,6 +620,20 @@ function renderMessage(role, content, timestamp, files) {
         timeEl.className = 'msg-time';
         timeEl.textContent = formatTime(timestamp);
         bubble.appendChild(timeEl);
+    }
+
+    // Forward button for assistant messages with a saved ID
+    if (role === 'assistant' && messageId) {
+        bubble.dataset.msgId = messageId;
+        const fwdBtn = document.createElement('button');
+        fwdBtn.className = 'btn-forward';
+        fwdBtn.title = 'Reenviar a Telegram';
+        fwdBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.28-.02-.12.03-2.07 1.32-5.84 3.87-.55.38-1.05.56-1.5.55-.49-.01-1.44-.28-2.15-.51-.87-.28-1.56-.43-1.5-.91.03-.25.38-.51 1.05-.78 4.12-1.79 6.87-2.97 8.26-3.54 3.93-1.62 4.75-1.9 5.28-1.91.12 0 .37.03.54.17.14.12.18.28.2.45-.01.06.01.24 0 .37z"/></svg>';
+        fwdBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showForwardMenu(bubble, messageId);
+        });
+        bubble.appendChild(fwdBtn);
     }
 
     chatMessages.appendChild(bubble);
@@ -625,7 +818,9 @@ $('#btn-logout').addEventListener('click', () => {
     clearAuth();
     currentConversationId = null;
     conversations = [];
+    telegramContacts = [];
     clearPendingFile();
+    closeTelegramModal();
     showScreen('login');
 });
 
@@ -675,6 +870,7 @@ function enterApp() {
     currentConversationId = null;
     clearPendingFile();
     loadConversations();
+    loadTelegramContacts();
 }
 
 function init() {

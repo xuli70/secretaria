@@ -53,6 +53,9 @@
             <div class="chat-header">
                 <button id="btn-menu" class="btn-icon btn-hamburger" title="Menu">&#9776;</button>
                 <span id="chat-title" class="chat-title">Secretaria</span>
+                <button id="btn-telegram" class="btn-icon btn-telegram" title="Telegram">
+                    <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.28-.02-.12.03-2.07 1.32-5.84 3.87-.55.38-1.05.56-1.5.55-.49-.01-1.44-.28-2.15-.51-.87-.28-1.56-.43-1.5-.91.03-.25.38-.51 1.05-.78 4.12-1.79 6.87-2.97 8.26-3.54 3.93-1.62 4.75-1.9 5.28-1.91.12 0 .37.03.54.17.14.12.18.28.2.45-.01.06.01.24 0 .37z"/></svg>
+                </button>
                 <button id="btn-logout" class="btn-icon" title="Salir">&#9211;</button>
             </div>
 
@@ -98,6 +101,22 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- Telegram Modal -->
+    <div id="telegram-overlay" class="telegram-overlay"></div>
+    <div id="telegram-modal" class="telegram-modal">
+        <div class="telegram-modal-header">
+            <span class="telegram-modal-title">Telegram</span>
+            <span id="telegram-bot-status" class="telegram-bot-status"></span>
+            <button id="btn-close-telegram" class="btn-icon" title="Cerrar">&times;</button>
+        </div>
+        <div id="telegram-contacts-list" class="telegram-contacts-list"></div>
+        <form id="telegram-add-form" class="telegram-add-form" autocomplete="off">
+            <input type="text" id="tg-name" placeholder="Nombre" required>
+            <input type="text" id="tg-chat-id" placeholder="Chat ID" required>
+            <button type="submit" class="btn-tg-add" title="Agregar">+</button>
+        </form>
     </div>
 
     <script src="/js/app.js"></script>
