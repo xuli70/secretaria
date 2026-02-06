@@ -14,6 +14,7 @@ class Settings:
 
     # Telegram
     TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    TELEGRAM_DEFAULT_CHAT_ID: str = os.getenv("TELEGRAM_DEFAULT_CHAT_ID", "")
 
     # Auth
     JWT_SECRET: str = os.getenv("JWT_SECRET", "change-me-to-a-random-secret")
