@@ -4,7 +4,8 @@ import os
 class Settings:
     # MINIMAX AI
     MINIMAX_API_KEY: str = os.getenv("MINIMAX_API_KEY", "")
-    MINIMAX_API_URL: str = os.getenv("MINIMAX_API_URL", "https://api.minimax.chat/v1")
+    MINIMAX_API_URL: str = os.getenv("MINIMAX_API_URL", "https://api.minimax.io/v1")
+    MINIMAX_MODEL: str = os.getenv("MINIMAX_MODEL", "MiniMax-M2")
 
     # Perplexity
     PERPLEXITY_API_KEY: str = os.getenv("PERPLEXITY_API_KEY", "")

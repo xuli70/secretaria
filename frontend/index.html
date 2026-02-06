@@ -25,7 +25,7 @@
                     <input type="text" id="input-username" placeholder="Usuario" autocomplete="username" required>
                 </div>
                 <div class="form-group">
-                    <input type="password" id="input-password" placeholder="Contraseña" autocomplete="current-password" required>
+                    <input type="password" id="input-password" placeholder="Contrasena" autocomplete="current-password" required>
                 </div>
                 <button type="submit" id="btn-login" class="btn-primary">Entrar</button>
                 <button type="button" id="btn-register" class="btn-secondary">Crear cuenta</button>
@@ -34,15 +34,48 @@
         </div>
     </div>
 
-    <!-- Chat Screen (placeholder for Phase 1) -->
+    <!-- Chat Screen -->
     <div id="screen-chat" class="screen">
-        <div class="chat-header">
-            <span class="chat-title">Secretaria</span>
-            <button id="btn-logout" class="btn-icon" title="Salir">⏻</button>
-        </div>
-        <div id="chat-messages" class="chat-messages">
-            <div class="welcome-msg">
-                <p>Bienvenido. El chat estará disponible en la siguiente fase.</p>
+        <!-- Sidebar Overlay -->
+        <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <span class="sidebar-title">Conversaciones</span>
+                <button id="btn-new-conv" class="btn-icon" title="Nueva conversacion">+</button>
+            </div>
+            <div id="conv-list" class="conv-list"></div>
+        </aside>
+
+        <!-- Main Chat Area -->
+        <div class="chat-main">
+            <div class="chat-header">
+                <button id="btn-menu" class="btn-icon btn-hamburger" title="Menu">&#9776;</button>
+                <span id="chat-title" class="chat-title">Secretaria</span>
+                <button id="btn-logout" class="btn-icon" title="Salir">&#9211;</button>
+            </div>
+
+            <div id="chat-messages" class="chat-messages">
+                <div id="welcome-msg" class="welcome-msg">
+                    <div class="welcome-icon">S</div>
+                    <p>Hola! Crea una nueva conversacion para comenzar.</p>
+                </div>
+            </div>
+
+            <!-- Typing indicator -->
+            <div id="typing-indicator" class="typing-indicator" hidden>
+                <div class="typing-dots">
+                    <span></span><span></span><span></span>
+                </div>
+            </div>
+
+            <!-- Input Bar -->
+            <div id="input-bar" class="input-bar" hidden>
+                <textarea id="msg-input" class="msg-input" placeholder="Escribe un mensaje..." rows="1"></textarea>
+                <button id="btn-send" class="btn-send" title="Enviar">
+                    <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M1.101 21.757L23.8 12.028 1.101 2.3l.011 7.912 13.623 1.816-13.623 1.817-.011 7.912z"/></svg>
+                </button>
             </div>
         </div>
     </div>
