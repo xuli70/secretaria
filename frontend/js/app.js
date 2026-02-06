@@ -139,6 +139,7 @@ let currentConversationId = null;
 let conversations = [];
 let isStreaming = false;
 let searchMode = false;
+let docMode = false;
 
 // --- File upload state ---
 let pendingFile = null;     // File object from picker
@@ -163,6 +164,7 @@ const attachmentPreviewName = $('#attachment-preview-name');
 const attachmentPreviewSize = $('#attachment-preview-size');
 const btnRemoveAttachment = $('#btn-remove-attachment');
 const btnSearchToggle = $('#btn-search-toggle');
+const btnDocToggle = $('#btn-doc-toggle');
 
 // --- Sidebar toggle ---
 
@@ -183,9 +185,23 @@ sidebarOverlay.addEventListener('click', closeSidebar);
 
 btnSearchToggle.addEventListener('click', () => {
     searchMode = !searchMode;
+    if (searchMode) { docMode = false; btnDocToggle.classList.remove('active'); }
     btnSearchToggle.classList.toggle('active', searchMode);
-    msgInput.placeholder = searchMode ? 'Busca en internet...' : 'Escribe un mensaje...';
+    updateInputPlaceholder();
 });
+
+btnDocToggle.addEventListener('click', () => {
+    docMode = !docMode;
+    if (docMode) { searchMode = false; btnSearchToggle.classList.remove('active'); }
+    btnDocToggle.classList.toggle('active', docMode);
+    updateInputPlaceholder();
+});
+
+function updateInputPlaceholder() {
+    if (docMode) msgInput.placeholder = 'Describe el documento a generar...';
+    else if (searchMode) msgInput.placeholder = 'Busca en internet...';
+    else msgInput.placeholder = 'Escribe un mensaje...';
+}
 
 // --- Conversations ---
 
@@ -378,7 +394,10 @@ function renderMessage(role, content, timestamp, files) {
     // Render file attachments
     if (files && files.length > 0) {
         for (const f of files) {
-            if (f.file_type === 'image') {
+            // Generated documents (assistant files with .docx from doc generation)
+            if (role === 'assistant' && f.filename && f.filename.startsWith('doc_') && f.filename.endsWith('.docx')) {
+                bubble.appendChild(createDocCard(f));
+            } else if (f.file_type === 'image') {
                 const img = document.createElement('img');
                 img.className = 'msg-file-image';
                 img.src = API + `/api/upload/files/${f.id}`;
@@ -426,6 +445,27 @@ function renderMessage(role, content, timestamp, files) {
 
     chatMessages.appendChild(bubble);
     return bubble;
+}
+
+function createDocCard(fileInfo) {
+    const card = document.createElement('a');
+    card.className = 'msg-generated-doc';
+    card.href = API + `/api/documents/${fileInfo.id}`;
+    card.target = '_blank';
+    card.rel = 'noopener';
+    card.innerHTML = `
+        <div class="doc-icon">
+            <svg viewBox="0 0 24 24"><path fill="currentColor" d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+        </div>
+        <div class="doc-info">
+            <div class="doc-name">${escapeHtml(fileInfo.filename)}</div>
+            <div class="doc-meta">DOCX${fileInfo.size_bytes ? ' · ' + formatFileSize(fileInfo.size_bytes) : ''}</div>
+        </div>
+        <div class="doc-download">
+            <svg viewBox="0 0 24 24"><path fill="currentColor" d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+        </div>
+    `;
+    return card;
 }
 
 function scrollToBottom() {
@@ -476,7 +516,7 @@ async function sendMessage() {
     aiBubble.style.display = 'none'; // hide until first chunk
 
     try {
-        const body = { content, use_search: searchMode };
+        const body = { content, use_search: searchMode, generate_doc: docMode };
         if (fileIds.length > 0) body.file_ids = fileIds;
 
         const res = await fetch(API + `/api/chat/conversations/${currentConversationId}/messages`, {
@@ -513,6 +553,16 @@ async function sendMessage() {
                 if (!line.startsWith('data: ')) continue;
                 const data = line.slice(6);
                 if (data === '[DONE]') continue;
+
+                // Detect generated document event
+                if (data.startsWith('[FILE:') && data.endsWith(']')) {
+                    try {
+                        const fileInfo = JSON.parse(data.slice(6, -1));
+                        aiBubble.appendChild(createDocCard(fileInfo));
+                        scrollToBottom();
+                    } catch (e) { /* ignore parse error */ }
+                    continue;
+                }
 
                 fullText += data;
                 typingIndicator.hidden = true;

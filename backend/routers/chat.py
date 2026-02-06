@@ -12,6 +12,7 @@ from backend.database import get_db
 from backend.models import User, Conversation, Message, File
 from backend.services.minimax_ai import chat_completion_stream, SYSTEM_PROMPT
 from backend.services.perplexity import search_completion_stream, SEARCH_SYSTEM_PROMPT
+from backend.services.doc_generator import generate_docx, DOC_SYSTEM_PROMPT
 from backend.config import settings
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
@@ -66,6 +67,7 @@ class MessageCreate(BaseModel):
     content: str = ""
     file_ids: list[int] | None = None
     use_search: bool = False
+    generate_doc: bool = False
 
 
 # --- Conversation CRUD ---
@@ -255,7 +257,13 @@ async def send_message(
     recent.reverse()
 
     use_search = body.use_search
-    system_prompt = SEARCH_SYSTEM_PROMPT if use_search else SYSTEM_PROMPT
+    generate_doc = body.generate_doc
+    if generate_doc:
+        system_prompt = DOC_SYSTEM_PROMPT
+    elif use_search:
+        system_prompt = SEARCH_SYSTEM_PROMPT
+    else:
+        system_prompt = SYSTEM_PROMPT
     ai_messages = [{"role": "system", "content": system_prompt}]
     for m in recent:
         msg_content = m.content
@@ -289,10 +297,9 @@ async def send_message(
             full_response += chunk
             yield f"data: {chunk}\n\n"
 
-        yield "data: [DONE]\n\n"
-
         # Save assistant response in a new DB session
         from backend.database import SessionLocal
+        import json as _json
         save_db = SessionLocal()
         try:
             assistant_msg = Message(
@@ -302,12 +309,42 @@ async def send_message(
                 model_used=model_label,
             )
             save_db.add(assistant_msg)
+            save_db.flush()
+
+            # Generate DOCX if in document mode
+            if generate_doc and full_response.strip():
+                save_dir = os.path.join(settings.DATA_DIR, "generados")
+                title = content[:60] if content else "Documento"
+                filepath, filename = generate_docx(full_response, title, save_dir)
+                size = os.path.getsize(filepath)
+
+                doc_file = File(
+                    conversation_id=conv_id,
+                    message_id=assistant_msg.id,
+                    filename=filename,
+                    filepath=filepath,
+                    file_type="document",
+                    mime_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    size_bytes=size,
+                )
+                save_db.add(doc_file)
+                save_db.flush()
+
+                file_info = _json.dumps({
+                    "id": doc_file.id,
+                    "filename": doc_file.filename,
+                    "size_bytes": doc_file.size_bytes,
+                })
+                yield f"data: [FILE:{file_info}]\n\n"
+
             save_db.query(Conversation).filter(Conversation.id == conv_id).update(
                 {"updated_at": datetime.now(timezone.utc)}
             )
             save_db.commit()
         finally:
             save_db.close()
+
+        yield "data: [DONE]\n\n"
 
     return StreamingResponse(
         event_stream(),

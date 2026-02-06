@@ -3,7 +3,7 @@
 > **Objetivo:** Aplicación web mobile-first de asistente personal (secretaria) con chat continuo, gestión documental, generación de documentos y reenvío por Telegram
 > **Carpeta:** D:\MINIMAX\Secretaria
 > **Ultima actualizacion:** 2026-02-06
-> **Estado global:** Fase 3 de 6 (completada)
+> **Estado global:** Fase 4 de 6 (completada)
 
 ---
 
@@ -11,7 +11,7 @@
 
 Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases de desarrollo. El cerebro es MINIMAX AI (chat) + Perplexity (búsqueda externa). La interfaz es un chat oscuro tipo WhatsApp optimizado para teléfono (PWA). Backend en Python/FastAPI, SQLite como BD, Docker para contenedores, Coolify para despliegue final desde GitHub.
 
-**PROXIMO PASO:** Iniciar Fase 4: Generador de Documentos.
+**PROXIMO PASO:** Iniciar Fase 5: Telegram.
 
 ---
 
@@ -195,8 +195,42 @@ Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases 
 
 ## Fase 4: Generador de Documentos
 
-> **Estado:** [ ] Pendiente
+> **Estado:** [x] Completada
 > **Prioridad:** Alta
+
+### Tareas
+- [x] Crear backend/services/doc_generator.py (DOC_SYSTEM_PROMPT, generate_docx con parser markdown-like a DOCX)
+- [x] Crear backend/routers/documents.py (GET /api/documents listar, GET /api/documents/{id} descargar)
+- [x] Registrar documents_router en backend/main.py (antes del static mount)
+- [x] Modificar backend/routers/chat.py (generate_doc en MessageCreate, DOC_SYSTEM_PROMPT, generacion DOCX post-stream, evento SSE [FILE:{...}])
+- [x] Frontend: boton toggle documento (icono pagina SVG) en input-bar entre search toggle y textarea
+- [x] Frontend: estado docMode, exclusion mutua con searchMode, placeholder dinamico
+- [x] Frontend: generate_doc en body del POST
+- [x] Frontend: deteccion de [FILE:{...}] en stream → renderizar card de descarga DOCX
+- [x] Frontend: createDocCard helper para generar cards de documento generado
+- [x] Frontend: estilos .btn-doc-toggle (42x42, purple toggle) y .msg-generated-doc (card con icono, nombre, tamaño, boton descarga)
+- [x] Frontend: renderMessage con soporte de generated docs (doc_*.docx en assistant → card especial)
+
+### Verificacion
+- [x] `docker compose up --build` arranca sin errores
+- [x] GET /health → 200 OK
+- [ ] Activar modo documento (boton se resalta purple, search se desactiva)
+- [ ] Enviar mensaje → respuesta AI en streaming con prompt de documentos
+- [ ] Al terminar streaming → card de descarga DOCX aparece en la burbuja
+- [ ] Click en card → descarga archivo .docx valido
+- [ ] DOCX tiene formato correcto (titulo, parrafos, listas)
+- [ ] Desactivar modo documento → chat normal como antes
+- [ ] GET /api/documents → lista documentos generados
+- [ ] Recargar pagina → historial muestra cards de documentos generados correctamente
+
+### Archivos creados/modificados
+- `backend/services/doc_generator.py` — CREADO: DOC_SYSTEM_PROMPT, generate_docx (parser: # heading, ## subheading, - lista, parrafo justificado, Calibri 11pt, margenes 2.5cm)
+- `backend/routers/documents.py` — CREADO: GET /api/documents (listar), GET /api/documents/{id} (descargar FileResponse)
+- `backend/main.py` — Registrado documents_router
+- `backend/routers/chat.py` — Import doc_generator, generate_doc en MessageCreate, DOC_SYSTEM_PROMPT routing, generacion DOCX post-stream con File record, evento SSE [FILE:{json}] antes de [DONE]
+- `frontend/index.html` — Boton toggle documento (icono pagina SVG)
+- `frontend/css/style.css` — Estilos .btn-doc-toggle (purple), .msg-generated-doc (card con doc-icon, doc-info, doc-download)
+- `frontend/js/app.js` — Estado docMode, exclusion mutua, updateInputPlaceholder, createDocCard, deteccion [FILE:] en stream, renderMessage con soporte generated docs, generate_doc en body POST
 
 ---
 
@@ -229,3 +263,4 @@ Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases 
 | 3 | 2026-02-06 | Fase 1 | Fase 1 completada: chat router, minimax_ai service SSE, frontend burbujas+sidebar+streaming | Iniciar Fase 2: Entrada multimodal + almacen |
 | 4 | 2026-02-06 | Fase 2 | Fase 2 completada: file_handler service, upload router, chat.py con files, frontend clip+preview+upload | Iniciar Fase 3: Perplexity + busqueda externa |
 | 5 | 2026-02-06 | Fase 3 | Fase 3 completada: perplexity service, search toggle, routing condicional chat/search | Iniciar Fase 4: Generador de documentos |
+| 6 | 2026-02-06 | Fase 4 | Fase 4 completada: doc_generator service, documents router, toggle documento, generacion DOCX post-stream, cards de descarga | Iniciar Fase 5: Telegram |
