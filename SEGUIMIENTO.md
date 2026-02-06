@@ -3,7 +3,7 @@
 > **Objetivo:** Aplicación web mobile-first de asistente personal (secretaria) con chat continuo, gestión documental, generación de documentos y reenvío por Telegram
 > **Carpeta:** D:\MINIMAX\Secretaria
 > **Ultima actualizacion:** 2026-02-06
-> **Estado global:** Fase 5 de 6 (completada)
+> **Estado global:** Fase 6 de 6 (completada) — PROYECTO COMPLETO
 
 ---
 
@@ -11,7 +11,7 @@
 
 Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases de desarrollo. El cerebro es MINIMAX AI (chat) + Perplexity (búsqueda externa). La interfaz es un chat oscuro tipo WhatsApp optimizado para teléfono (PWA). Backend en Python/FastAPI, SQLite como BD, Docker para contenedores, Coolify para despliegue final desde GitHub.
 
-**PROXIMO PASO:** Iniciar Fase 6: Deploy Coolify.
+**PROXIMO PASO:** Proyecto completado. Push a GitHub y deploy via Coolify.
 
 ---
 
@@ -276,8 +276,28 @@ Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases 
 
 ## Fase 6: Deploy Coolify
 
-> **Estado:** [ ] Pendiente
+> **Estado:** [x] Completada
 > **Prioridad:** Media
+
+### Tareas
+- [x] Crear .dockerignore (excluir .env, .git, __pycache__, data/, *.md, .claude/, node_modules/, docker-compose.yml)
+- [x] Actualizar SEGUIMIENTO.md con Fase 6 completada
+
+### Configuracion Coolify (manual por el usuario)
+- App creada en Coolify con Dockerfile build
+- Variables de entorno configuradas: JWT_SECRET, MINIMAX_API_KEY, PERPLEXITY_API_KEY, TELEGRAM_BOT_TOKEN
+- Volumen persistente mapeado a /data
+- Puerto 8000 expuesto
+- Deploy automatico desde push a GitHub (branch main)
+
+### Verificacion
+- [ ] Push al repo GitHub → Coolify detecta el cambio y hace deploy
+- [ ] GET /health en dominio de produccion → 200 OK
+- [ ] Login y chat funcionan en produccion
+
+### Archivos creados/modificados
+- `.dockerignore` — CREADO: excluye secretos, cache, datos locales, docs del build context
+- `SEGUIMIENTO.md` — Actualizado con Fase 6 completada
 
 ---
 
@@ -298,3 +318,4 @@ Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases 
 | 5 | 2026-02-06 | Fase 3 | Fase 3 completada: perplexity service, search toggle, routing condicional chat/search | Iniciar Fase 4: Generador de documentos |
 | 6 | 2026-02-06 | Fase 4 | Fase 4 completada: doc_generator service, documents router, toggle documento, generacion DOCX post-stream, cards de descarga | Iniciar Fase 5: Telegram |
 | 7 | 2026-02-06 | Fase 5 | Fase 5 completada: telegram_bot service, telegram router, modal contactos, forward button en burbujas, dropdown selector, feedback animado | Iniciar Fase 6: Deploy Coolify |
+| 8 | 2026-02-06 | Fase 6 | Fase 6 completada: .dockerignore creado, SEGUIMIENTO actualizado, proyecto listo para deploy Coolify | Push a GitHub y verificar deploy |

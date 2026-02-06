@@ -1,0 +1,28 @@
+# Secrets
+.env
+.env.*
+
+# Git
+.git/
+.gitignore
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Local data
+data/
+
+# Documentation
+*.md
+
+# IDE / tools
+.claude/
+.vscode/
+
+# Node (por si acaso)
+node_modules/
+
+# Docker compose (solo dev local)
+docker-compose.yml
