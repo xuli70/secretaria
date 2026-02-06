@@ -10,6 +10,7 @@ class Settings:
     # Perplexity
     PERPLEXITY_API_KEY: str = os.getenv("PERPLEXITY_API_KEY", "")
     PERPLEXITY_API_URL: str = os.getenv("PERPLEXITY_API_URL", "https://api.perplexity.ai")
+    PERPLEXITY_MODEL: str = os.getenv("PERPLEXITY_MODEL", "sonar")
 
     # Telegram
     TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")

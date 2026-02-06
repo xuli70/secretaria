@@ -517,6 +517,35 @@ html, body {
     cursor: not-allowed;
 }
 
+/* === Search Toggle Button === */
+.btn-search-toggle {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.2s, color 0.2s;
+}
+
+.btn-search-toggle:hover {
+    color: var(--text-primary);
+}
+
+.btn-search-toggle.active {
+    background: var(--accent);
+    color: #fff;
+}
+
+.btn-search-toggle.active:hover {
+    background: var(--accent-hover);
+}
+
 /* === Attachment Preview === */
 .attachment-preview {
     display: flex;

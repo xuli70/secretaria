@@ -11,6 +11,7 @@ from backend.auth import get_current_user
 from backend.database import get_db
 from backend.models import User, Conversation, Message, File
 from backend.services.minimax_ai import chat_completion_stream, SYSTEM_PROMPT
+from backend.services.perplexity import search_completion_stream, SEARCH_SYSTEM_PROMPT
 from backend.config import settings
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
@@ -64,6 +65,7 @@ class MessageOut(BaseModel):
 class MessageCreate(BaseModel):
     content: str = ""
     file_ids: list[int] | None = None
+    use_search: bool = False
 
 
 # --- Conversation CRUD ---
@@ -252,7 +254,9 @@ async def send_message(
     )
     recent.reverse()
 
-    ai_messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    use_search = body.use_search
+    system_prompt = SEARCH_SYSTEM_PROMPT if use_search else SYSTEM_PROMPT
+    ai_messages = [{"role": "system", "content": system_prompt}]
     for m in recent:
         msg_content = m.content
         # For the current user message, use the AI content with file context
@@ -270,10 +274,18 @@ async def send_message(
         conv.title = title
         db.commit()
 
+    # Select stream function and model label
+    if use_search:
+        stream_fn = search_completion_stream
+        model_label = f"perplexity-{settings.PERPLEXITY_MODEL}"
+    else:
+        stream_fn = chat_completion_stream
+        model_label = settings.MINIMAX_MODEL
+
     # Stream response
     async def event_stream():
         full_response = ""
-        async for chunk in chat_completion_stream(ai_messages):
+        async for chunk in stream_fn(ai_messages):
             full_response += chunk
             yield f"data: {chunk}\n\n"
 
@@ -287,7 +299,7 @@ async def send_message(
                 conversation_id=conv_id,
                 role="assistant",
                 content=full_response,
-                model_used=settings.MINIMAX_MODEL,
+                model_used=model_label,
             )
             save_db.add(assistant_msg)
             save_db.query(Conversation).filter(Conversation.id == conv_id).update(

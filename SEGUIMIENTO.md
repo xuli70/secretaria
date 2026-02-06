@@ -3,7 +3,7 @@
 > **Objetivo:** Aplicación web mobile-first de asistente personal (secretaria) con chat continuo, gestión documental, generación de documentos y reenvío por Telegram
 > **Carpeta:** D:\MINIMAX\Secretaria
 > **Ultima actualizacion:** 2026-02-06
-> **Estado global:** Fase 2 de 6 (completada)
+> **Estado global:** Fase 3 de 6 (completada)
 
 ---
 
@@ -11,7 +11,7 @@
 
 Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases de desarrollo. El cerebro es MINIMAX AI (chat) + Perplexity (búsqueda externa). La interfaz es un chat oscuro tipo WhatsApp optimizado para teléfono (PWA). Backend en Python/FastAPI, SQLite como BD, Docker para contenedores, Coolify para despliegue final desde GitHub.
 
-**PROXIMO PASO:** Iniciar Fase 3: Perplexity + Busqueda Externa.
+**PROXIMO PASO:** Iniciar Fase 4: Generador de Documentos.
 
 ---
 
@@ -159,8 +159,37 @@ Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases 
 
 ## Fase 3: Perplexity + Busqueda Externa
 
-> **Estado:** [ ] Pendiente
+> **Estado:** [x] Completada
 > **Prioridad:** Alta
+
+### Tareas
+- [x] Crear backend/services/perplexity.py (cliente SSE streaming, mismo patron que minimax_ai.py)
+- [x] Agregar PERPLEXITY_MODEL a backend/config.py (default: "sonar")
+- [x] Agregar PERPLEXITY_MODEL a .env.example
+- [x] Modificar backend/routers/chat.py (import perplexity, use_search en MessageCreate, routing condicional)
+- [x] Frontend: boton toggle busqueda (icono globo) en input-bar entre clip y textarea
+- [x] Frontend: estado searchMode, toggle clase .active, cambio de placeholder
+- [x] Frontend: envio de use_search en body del POST
+- [x] Frontend: estilos .btn-search-toggle (42x42, transparente/accent toggle)
+
+### Verificacion
+- [ ] `docker compose up --build` arranca sin errores
+- [ ] GET /health → 200 OK
+- [ ] Activar modo busqueda (boton globo se resalta)
+- [ ] Enviar mensaje → respuesta de Perplexity con fuentes web
+- [ ] Desactivar modo busqueda → respuesta de MiniMax como antes
+- [ ] Recargar pagina → historial muestra mensajes de ambos modelos
+- [ ] Campo model_used en BD distingue "MiniMax-M2" y "perplexity-sonar"
+- [ ] Sin PERPLEXITY_API_KEY → mensaje de error amigable
+
+### Archivos creados/modificados
+- `backend/services/perplexity.py` — CREADO: cliente streaming Perplexity AI (search_completion_stream, SEARCH_SYSTEM_PROMPT)
+- `backend/config.py` — Agregado PERPLEXITY_MODEL
+- `.env.example` — Agregado PERPLEXITY_MODEL=sonar
+- `backend/routers/chat.py` — Import perplexity, use_search en MessageCreate, routing condicional chat/search, model_label dinamico
+- `frontend/index.html` — Boton toggle busqueda web (icono globo SVG)
+- `frontend/css/style.css` — Estilos .btn-search-toggle (normal, hover, active)
+- `frontend/js/app.js` — Estado searchMode, toggle event, placeholder dinamico, use_search en body POST
 
 ---
 
@@ -199,3 +228,4 @@ Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases 
 | 2 | 2026-02-06 | Fase 0 | Fase 0 completada: scaffolding, auth, Docker verificado, Git init | Iniciar Fase 1: Chat + MINIMAX AI |
 | 3 | 2026-02-06 | Fase 1 | Fase 1 completada: chat router, minimax_ai service SSE, frontend burbujas+sidebar+streaming | Iniciar Fase 2: Entrada multimodal + almacen |
 | 4 | 2026-02-06 | Fase 2 | Fase 2 completada: file_handler service, upload router, chat.py con files, frontend clip+preview+upload | Iniciar Fase 3: Perplexity + busqueda externa |
+| 5 | 2026-02-06 | Fase 3 | Fase 3 completada: perplexity service, search toggle, routing condicional chat/search | Iniciar Fase 4: Generador de documentos |

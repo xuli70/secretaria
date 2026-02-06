@@ -138,6 +138,7 @@ btnRegister.addEventListener('click', () => {
 let currentConversationId = null;
 let conversations = [];
 let isStreaming = false;
+let searchMode = false;
 
 // --- File upload state ---
 let pendingFile = null;     // File object from picker
@@ -161,6 +162,7 @@ const attachmentPreview = $('#attachment-preview');
 const attachmentPreviewName = $('#attachment-preview-name');
 const attachmentPreviewSize = $('#attachment-preview-size');
 const btnRemoveAttachment = $('#btn-remove-attachment');
+const btnSearchToggle = $('#btn-search-toggle');
 
 // --- Sidebar toggle ---
 
@@ -176,6 +178,14 @@ function closeSidebar() {
 
 $('#btn-menu').addEventListener('click', openSidebar);
 sidebarOverlay.addEventListener('click', closeSidebar);
+
+// --- Search toggle ---
+
+btnSearchToggle.addEventListener('click', () => {
+    searchMode = !searchMode;
+    btnSearchToggle.classList.toggle('active', searchMode);
+    msgInput.placeholder = searchMode ? 'Busca en internet...' : 'Escribe un mensaje...';
+});
 
 // --- Conversations ---
 
@@ -466,7 +476,7 @@ async function sendMessage() {
     aiBubble.style.display = 'none'; // hide until first chunk
 
     try {
-        const body = { content };
+        const body = { content, use_search: searchMode };
         if (fileIds.length > 0) body.file_ids = fileIds;
 
         const res = await fetch(API + `/api/chat/conversations/${currentConversationId}/messages`, {
