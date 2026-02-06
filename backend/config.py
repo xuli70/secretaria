@@ -21,6 +21,10 @@ class Settings:
     JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
     JWT_EXPIRE_MINUTES: int = int(os.getenv("JWT_EXPIRE_MINUTES", "1440"))
 
+    # App credentials (set in Coolify env vars)
+    APP_USERNAME: str = os.getenv("APP_USERNAME", "")
+    APP_PASSWORD: str = os.getenv("APP_PASSWORD", "")
+
     # App
     APP_PORT: int = int(os.getenv("APP_PORT", "8000"))
     DATA_DIR: str = os.getenv("DATA_DIR", "/data")

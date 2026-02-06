@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
-from backend.auth import hash_password, verify_password, create_token
+from backend.auth import verify_password, create_token
 from backend.database import get_db
 from backend.models import User
 
@@ -36,26 +36,6 @@ class AuthResponse(BaseModel):
     user_id: int
     username: str
 
-
-@router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
-def register(body: AuthRequest, db: Session = Depends(get_db)):
-    existing = db.query(User).filter(User.username == body.username).first()
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="El usuario ya existe",
-        )
-
-    user = User(
-        username=body.username,
-        password_hash=hash_password(body.password),
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-
-    token = create_token(user.id, user.username)
-    return AuthResponse(token=token, user_id=user.id, username=user.username)
 
 
 @router.post("/login", response_model=AuthResponse)

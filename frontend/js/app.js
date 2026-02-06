@@ -87,7 +87,6 @@ async function apiPatch(path, body) {
 
 const form = $('#form-login');
 const btnLogin = $('#btn-login');
-const btnRegister = $('#btn-register');
 const errorEl = $('#login-error');
 
 function showError(msg) {
@@ -110,7 +109,6 @@ async function handleAuth(endpoint) {
     }
 
     btnLogin.disabled = true;
-    btnRegister.disabled = true;
 
     try {
         const data = await apiPost(endpoint, { username, password });
@@ -120,17 +118,12 @@ async function handleAuth(endpoint) {
         showError(err.message);
     } finally {
         btnLogin.disabled = false;
-        btnRegister.disabled = false;
     }
 }
 
 form.addEventListener('submit', (e) => {
     e.preventDefault();
     handleAuth('/api/auth/login');
-});
-
-btnRegister.addEventListener('click', () => {
-    handleAuth('/api/auth/register');
 });
 
 // --- Chat State ---

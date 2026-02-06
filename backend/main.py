@@ -5,8 +5,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from backend.auth import hash_password, verify_password
 from backend.config import settings
-from backend.database import init_db
+from backend.database import init_db, SessionLocal
+from backend.models import User
 from backend.routers import auth as auth_router
 from backend.routers import chat as chat_router
 from backend.routers import upload as upload_router
@@ -21,7 +23,31 @@ async def lifespan(app: FastAPI):
         os.makedirs(os.path.join(settings.DATA_DIR, subdir), exist_ok=True)
     # Initialize database tables
     init_db()
+    # Auto-create/update admin user from env vars
+    _ensure_admin_user()
     yield
+
+
+def _ensure_admin_user():
+    """Create or update the admin user from APP_USERNAME / APP_PASSWORD env vars."""
+    if not settings.APP_USERNAME or not settings.APP_PASSWORD:
+        return
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.username == settings.APP_USERNAME).first()
+        if user:
+            if not verify_password(settings.APP_PASSWORD, user.password_hash):
+                user.password_hash = hash_password(settings.APP_PASSWORD)
+                db.commit()
+        else:
+            user = User(
+                username=settings.APP_USERNAME,
+                password_hash=hash_password(settings.APP_PASSWORD),
+            )
+            db.add(user)
+            db.commit()
+    finally:
+        db.close()
 
 
 app = FastAPI(

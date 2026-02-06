@@ -11,7 +11,7 @@
 
 Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases de desarrollo. El cerebro es MINIMAX AI (chat) + Perplexity (búsqueda externa). La interfaz es un chat oscuro tipo WhatsApp optimizado para teléfono (PWA). Backend en Python/FastAPI, SQLite como BD, Docker para contenedores, Coolify para despliegue final desde GitHub.
 
-**PROXIMO PASO:** Proyecto completado. Push a GitHub y deploy via Coolify.
+**PROXIMO PASO:** Verificar deploy en produccion (https://secretaria.axcsol.com)
 
 ---
 
@@ -282,10 +282,13 @@ Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases 
 ### Tareas
 - [x] Crear .dockerignore (excluir .env, .git, __pycache__, data/, *.md, .claude/, node_modules/, docker-compose.yml)
 - [x] Actualizar SEGUIMIENTO.md con Fase 6 completada
+- [x] Agregar TELEGRAM_DEFAULT_CHAT_ID a config.py y .env.example
+- [x] Push a GitHub (repo: xuli70/secretaria, branch: main)
+- [x] App creada en Coolify (UUID: eo0w8o0sokgcokswkss400ks, URL: https://secretaria.axcsol.com)
 
 ### Configuracion Coolify (manual por el usuario)
 - App creada en Coolify con Dockerfile build
-- Variables de entorno configuradas: JWT_SECRET, MINIMAX_API_KEY, PERPLEXITY_API_KEY, TELEGRAM_BOT_TOKEN
+- Variables de entorno configuradas: JWT_SECRET, MINIMAX_API_KEY, PERPLEXITY_API_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_DEFAULT_CHAT_ID
 - Volumen persistente mapeado a /data
 - Puerto 8000 expuesto
 - Deploy automatico desde push a GitHub (branch main)
@@ -297,7 +300,9 @@ Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases 
 
 ### Archivos creados/modificados
 - `.dockerignore` — CREADO: excluye secretos, cache, datos locales, docs del build context
-- `SEGUIMIENTO.md` — Actualizado con Fase 6 completada
+- `backend/config.py` — Agregado TELEGRAM_DEFAULT_CHAT_ID
+- `.env.example` — Agregado TELEGRAM_DEFAULT_CHAT_ID
+- `SEGUIMIENTO.md` — Actualizado con Fase 6 completada y deploy info
 
 ---
 
@@ -319,3 +324,4 @@ Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases 
 | 6 | 2026-02-06 | Fase 4 | Fase 4 completada: doc_generator service, documents router, toggle documento, generacion DOCX post-stream, cards de descarga | Iniciar Fase 5: Telegram |
 | 7 | 2026-02-06 | Fase 5 | Fase 5 completada: telegram_bot service, telegram router, modal contactos, forward button en burbujas, dropdown selector, feedback animado | Iniciar Fase 6: Deploy Coolify |
 | 8 | 2026-02-06 | Fase 6 | Fase 6 completada: .dockerignore creado, SEGUIMIENTO actualizado, proyecto listo para deploy Coolify | Push a GitHub y verificar deploy |
+| 9 | 2026-02-06 | Deploy | TELEGRAM_DEFAULT_CHAT_ID agregado, push a GitHub, variables configuradas en Coolify | Verificar deploy en produccion |
