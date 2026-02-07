@@ -1441,6 +1441,252 @@ body.selection-mode .msg-bubble[data-msg-id].selected::after {
     color: #fff;
 }
 
+/* === Google Calendar Section === */
+.gcal-section {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+.gcal-header {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+}
+
+.gcal-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    flex: 1;
+}
+
+.gcal-tabs {
+    display: flex;
+    gap: 4px;
+}
+
+.gcal-tab {
+    padding: 4px 10px;
+    border: none;
+    border-radius: 12px;
+    background: var(--bg-input);
+    color: var(--text-secondary);
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.gcal-tab:hover {
+    color: var(--text-primary);
+}
+
+.gcal-tab.active {
+    background: #4285f4;
+    color: #fff;
+}
+
+.btn-gcal-add {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: #4285f4;
+    color: #fff;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s;
+}
+
+.btn-gcal-add:hover {
+    background: #5a9cf6;
+}
+
+.gcal-events {
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.gcal-loading,
+.gcal-empty {
+    padding: 20px 12px;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.gcal-event {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: background 0.15s;
+}
+
+.gcal-event:last-child {
+    border-bottom: none;
+}
+
+.gcal-event:hover {
+    background: rgba(255,255,255,0.04);
+}
+
+.gcal-event-time {
+    font-size: 12px;
+    color: #4285f4;
+    font-weight: 600;
+    min-width: 50px;
+    flex-shrink: 0;
+    padding-top: 1px;
+}
+
+.gcal-event-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.gcal-event-title {
+    font-size: 13px;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gcal-event-location {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gcal-event-delete {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s;
+    flex-shrink: 0;
+}
+
+.gcal-event:hover .gcal-event-delete {
+    opacity: 1;
+}
+
+.gcal-event-delete:hover {
+    color: var(--danger);
+}
+
+/* === Calendar Create Form === */
+.gcal-form {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+}
+
+.gcal-form-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.gcal-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: none;
+    border-radius: 8px;
+    background: var(--bg-input);
+    color: var(--text-primary);
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+}
+
+.gcal-input::placeholder {
+    color: var(--text-secondary);
+}
+
+.gcal-input:focus {
+    box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.4);
+}
+
+.gcal-textarea {
+    resize: none;
+    line-height: 1.4;
+}
+
+.gcal-form-row {
+    display: flex;
+    gap: 8px;
+}
+
+.gcal-form-row .gcal-input {
+    flex: 1;
+    min-width: 0;
+}
+
+.gcal-form-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.btn-gcal-cancel {
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 13px;
+    cursor: pointer;
+    transition: color 0.15s;
+}
+
+.btn-gcal-cancel:hover {
+    color: var(--text-primary);
+}
+
+.btn-gcal-save {
+    padding: 8px 20px;
+    border: none;
+    border-radius: 8px;
+    background: #4285f4;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.btn-gcal-save:hover {
+    background: #5a9cf6;
+}
+
+.btn-gcal-save:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 /* === Mobile (< 768px) === */
 @media (max-width: 768px) {
     .sidebar {

@@ -1,5 +1,8 @@
-from fastapi import APIRouter, Depends, Request
+from datetime import datetime, timedelta, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from google_auth_oauthlib.flow import Flow
@@ -11,6 +14,12 @@ from backend.auth import get_current_user
 from backend.config import settings
 from backend.database import get_db
 from backend.services.google_auth import get_stored_token, store_token, delete_token
+from backend.services.google_calendar import (
+    list_events,
+    get_event,
+    create_event,
+    delete_event,
+)
 
 router = APIRouter(prefix="/api/google", tags=["google"])
 
@@ -136,3 +145,81 @@ def google_disconnect(user=Depends(get_current_user), db: Session = Depends(get_
 
     deleted = delete_token(db, user.id)
     return {"ok": deleted}
+
+
+# ── Calendar endpoints ────────────────────────────────────────────
+
+
+def _require_google(db: Session, user_id: int) -> Credentials:
+    creds = get_valid_credentials(db, user_id)
+    if not creds:
+        raise HTTPException(status_code=400, detail="Google no conectado")
+    return creds
+
+
+@router.get("/calendar/events")
+def calendar_events_range(
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+    time_min: str | None = None,
+    time_max: str | None = None,
+    max_results: int = 50,
+):
+    creds = _require_google(db, user.id)
+    return list_events(creds, time_min=time_min, time_max=time_max, max_results=max_results)
+
+
+@router.get("/calendar/events/today")
+def calendar_events_today(user=Depends(get_current_user), db: Session = Depends(get_db)):
+    creds = _require_google(db, user.id)
+    now = datetime.now(timezone.utc)
+    start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    end = start + timedelta(days=1)
+    return list_events(creds, time_min=start.isoformat(), time_max=end.isoformat())
+
+
+@router.get("/calendar/events/week")
+def calendar_events_week(user=Depends(get_current_user), db: Session = Depends(get_db)):
+    creds = _require_google(db, user.id)
+    now = datetime.now(timezone.utc)
+    start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    end = start + timedelta(days=7)
+    return list_events(creds, time_min=start.isoformat(), time_max=end.isoformat())
+
+
+class CreateEventBody(BaseModel):
+    summary: str
+    start: str
+    end: str
+    description: str | None = None
+    location: str | None = None
+    attendees: list[str] | None = None
+
+
+@router.post("/calendar/events")
+def calendar_create_event(
+    body: CreateEventBody,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    creds = _require_google(db, user.id)
+    return create_event(
+        creds,
+        summary=body.summary,
+        start=body.start,
+        end=body.end,
+        description=body.description,
+        location=body.location,
+        attendees=body.attendees,
+    )
+
+
+@router.delete("/calendar/events/{event_id}")
+def calendar_delete_event(
+    event_id: str,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    creds = _require_google(db, user.id)
+    delete_event(creds, event_id)
+    return {"ok": True}

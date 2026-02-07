@@ -3,7 +3,7 @@
 > **Proyecto:** Secretaria — Asistente Personal PWA
 > **Objetivo:** Integrar Google Account (OAuth 2.0) para acceso a Calendar, Gmail, Drive y Contacts
 > **Fecha creacion:** 2026-02-07
-> **Estado global:** Fase 9+10 completadas (OAuth infraestructura + flujo completo)
+> **Estado global:** Fase 9+10+11 completadas (OAuth + Calendar)
 
 ---
 
@@ -13,7 +13,7 @@
 |------|--------|--------|
 | 9 | Seguridad de secretos Google + variables de entorno | Completada |
 | 10 | OAuth 2.0 — Flujo de autenticacion Google | Completada |
-| 11 | Google Calendar — Lectura y creacion de eventos | Pendiente |
+| 11 | Google Calendar — Lectura y creacion de eventos | Completada |
 | 12 | Gmail — Lectura y envio de correos | Pendiente |
 | 13 | Google Drive — Explorar y subir archivos | Pendiente |
 | 14 | Google Contacts — Lectura de contactos | Pendiente |
@@ -93,27 +93,35 @@ Implementar el flujo completo OAuth 2.0 con Google para obtener y refrescar toke
 
 ## Fase 11: Google Calendar — Lectura y creacion de eventos
 
-> **Estado:** [ ] Pendiente
+> **Estado:** [x] Completada
 > **Prioridad:** Alta
 
 ### Objetivo
 Leer eventos del calendario del usuario y crear nuevos eventos desde el chat.
 
 ### Tareas
-- [ ] Crear `backend/services/google_calendar.py`:
-  - `list_events(token, time_min, time_max, max_results)` — listar eventos
-  - `get_event(token, event_id)` — detalle de un evento
-  - `create_event(token, summary, start, end, description?, location?, attendees?)` — crear evento
-  - `delete_event(token, event_id)` — eliminar evento
-- [ ] Crear endpoints en `backend/routers/google.py` (o sub-router):
-  - `GET /api/google/calendar/events?from=&to=` — listar eventos en rango
+- [x] Crear `backend/services/google_calendar.py`:
+  - `list_events(creds, time_min, time_max, max_results)` — listar eventos
+  - `get_event(creds, event_id)` — detalle de un evento
+  - `create_event(creds, summary, start, end, description?, location?, attendees?)` — crear evento
+  - `delete_event(creds, event_id)` — eliminar evento
+- [x] Crear endpoints en `backend/routers/google.py`:
+  - `GET /api/google/calendar/events?time_min=&time_max=&max_results=` — listar eventos en rango
   - `GET /api/google/calendar/events/today` — eventos de hoy
   - `GET /api/google/calendar/events/week` — eventos de la semana
-  - `POST /api/google/calendar/events` — crear evento
-  - `DELETE /api/google/calendar/events/{id}` — eliminar evento
-- [ ] Frontend: vista de eventos en sidebar (tab o seccion)
-- [ ] Frontend: renderizar eventos como cards (titulo, hora, ubicacion)
-- [ ] Frontend: formulario basico de creacion de evento
+  - `POST /api/google/calendar/events` — crear evento (body: summary, start, end, description?, location?, attendees?)
+  - `DELETE /api/google/calendar/events/{event_id}` — eliminar evento
+- [x] Frontend: seccion Calendar dentro del modal Google (tabs Hoy/Semana)
+- [x] Frontend: renderizar eventos como cards (hora, titulo, ubicacion, boton eliminar)
+- [x] Frontend: formulario basico de creacion de evento (titulo, inicio, fin, ubicacion, descripcion)
+- [x] Frontend: click en titulo de evento → abre link en Google Calendar
+
+### Archivos creados/modificados
+- `backend/services/google_calendar.py` — CREADO: _get_service, list_events, get_event, create_event, delete_event, _parse_datetime, _format_event
+- `backend/routers/google.py` — Agregados 5 endpoints calendar, CreateEventBody model, _require_google helper
+- `frontend/index.html` — Seccion Calendar en google-connected: gcal-events, gcal-form con inputs
+- `frontend/css/style.css` — Estilos gcal-section, gcal-header, gcal-tabs, gcal-event, gcal-form, btn-gcal-*
+- `frontend/js/app.js` — loadCalendarEvents, renderCalendarEvents, formatCalendarTime, toLocalISOString, gcalTabs, gcalForm handlers
 
 ### Verificacion
 - [ ] `GET /api/google/calendar/events/today` → lista eventos de hoy

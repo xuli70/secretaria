@@ -3,7 +3,7 @@
 > **Objetivo:** Aplicación web mobile-first de asistente personal (secretaria) con chat continuo, gestión documental, generación de documentos y reenvío por Telegram
 > **Carpeta:** D:\MINIMAX\Secretaria
 > **Ultima actualizacion:** 2026-02-07
-> **Estado global:** Fase 9+10 completadas — Google OAuth 2.0 integrado (infraestructura de seguridad + flujo completo)
+> **Estado global:** Fase 9+10+11 completadas — Google OAuth 2.0 + Google Calendar integrado
 
 ---
 
@@ -11,7 +11,7 @@
 
 Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases de desarrollo. El cerebro es MINIMAX AI (chat) + Perplexity (búsqueda externa). La interfaz es un chat oscuro tipo WhatsApp optimizado para teléfono (PWA). Backend en Python/FastAPI, SQLite como BD, Docker para contenedores, Coolify para despliegue final desde GitHub.
 
-**ESTADO:** Aplicacion funcionando correctamente en produccion. Google OAuth 2.0 integrado: boton Google en header, modal con estado/conectar/desconectar, tokens cifrados con Fernet en SQLite, flujo completo OAuth con refresh automatico, scopes Calendar+Gmail+Drive+Contacts. Explorador de archivos en sidebar con tabs y arbol colapsable. Archivos recuperables tras redeploy. Generacion de documentos DOCX/TXT. Filtro backend de bloques `<think>`.
+**ESTADO:** Aplicacion funcionando correctamente en produccion. Google OAuth 2.0 integrado con Google Calendar: lectura de eventos (hoy/semana), creacion y eliminacion de eventos, UI en modal Google con tabs y formulario. Explorador de archivos en sidebar con tabs y arbol colapsable. Archivos recuperables tras redeploy. Generacion de documentos DOCX/TXT. Filtro backend de bloques `<think>`.
 
 ---
 
@@ -838,6 +838,40 @@ Clasificacion de archivos en 3 estados: disponible, recuperable, perdido.
 
 ---
 
+## Fase 11: Google Calendar — Lectura y creacion de eventos
+
+> **Estado:** [x] Completada
+> **Prioridad:** Alta
+
+### Tareas
+- [x] Crear `backend/services/google_calendar.py` con funciones:
+  - `list_events(creds, time_min, time_max, max_results)` — listar eventos del calendario primario
+  - `get_event(creds, event_id)` — detalle de un evento
+  - `create_event(creds, summary, start, end, description?, location?, attendees?)` — crear evento
+  - `delete_event(creds, event_id)` — eliminar evento
+- [x] Agregar 5 endpoints de Calendar en `backend/routers/google.py`:
+  - `GET /api/google/calendar/events?time_min=&time_max=&max_results=` — rango personalizado
+  - `GET /api/google/calendar/events/today` — eventos de hoy (UTC midnight to midnight)
+  - `GET /api/google/calendar/events/week` — eventos de los proximos 7 dias
+  - `POST /api/google/calendar/events` — crear evento (CreateEventBody model)
+  - `DELETE /api/google/calendar/events/{event_id}` — eliminar evento
+- [x] Helper `_require_google()` para validar conexion Google en endpoints
+- [x] Frontend: seccion Calendar dentro del modal Google (visible solo cuando conectado)
+- [x] Frontend: tabs Hoy/Semana para filtrar eventos
+- [x] Frontend: eventos como cards (hora, titulo, ubicacion, boton eliminar)
+- [x] Frontend: click en titulo → abre evento en Google Calendar (html_link)
+- [x] Frontend: formulario crear evento (titulo, inicio, fin, ubicacion, descripcion)
+- [x] Frontend: carga automatica de eventos al abrir modal Google
+
+### Archivos creados/modificados
+- `backend/services/google_calendar.py` — CREADO: _get_service, list_events, get_event, create_event, delete_event, _parse_datetime, _format_event
+- `backend/routers/google.py` — Imports (datetime, HTTPException, BaseModel, google_calendar), _require_google helper, 5 endpoints calendar, CreateEventBody model
+- `frontend/index.html` — Seccion gcal-section en google-connected (tabs, event list, create form con inputs)
+- `frontend/css/style.css` — Estilos gcal-section, gcal-header, gcal-tabs, gcal-tab, btn-gcal-add, gcal-events, gcal-event, gcal-form, gcal-input, gcal-form-actions
+- `frontend/js/app.js` — Estado gcalPeriod, refs DOM, gcalTabs handler, loadCalendarEvents, renderCalendarEvents, formatCalendarTime, toLocalISOString, form handlers (add/cancel/save), integracion con updateGoogleUI
+
+---
+
 ## Notas de proceso
 
 > **IMPORTANTE:** Este documento DEBE actualizarse al final de cada fase completada. Incluir: tareas realizadas, archivos creados/modificados, verificaciones y siguiente paso.
@@ -873,3 +907,4 @@ Clasificacion de archivos en 3 estados: disponible, recuperable, perdido.
 | 23 | 2026-02-07 | Fix ghost visible | Ghost files ahora visibles como "No disponible" (opacity 0.45, gris, sin click) en vez de ocultarse. Campo `available` en API. Toast de error en loadExplorerFiles | Verificar en produccion |
 | 24 | 2026-02-07 | Recoverable files | Archivos perdidos tras redeploy clasificados en "Recuperable" (auto-regeneracion al click) o "No disponible" (irrecuperables). Campo `recoverable` en API. TXT subidos recuperados desde `extracted_text`. Refresh post-descarga | Verificar en produccion |
 | 25 | 2026-02-07 | Fase 9+10 Google OAuth | Infraestructura seguridad (Fernet encrypt, GoogleToken model, config vars) + flujo OAuth completo (4 endpoints, modal UI, boton header, scopes badges, redirect handling). get_valid_credentials() para fases futuras | Build Docker + verificar OAuth flow |
+| 26 | 2026-02-07 | Fase 11 Google Calendar | google_calendar.py service (list/get/create/delete events), 5 endpoints en google router, UI Calendar en modal (tabs hoy/semana, event cards, create form) | Build Docker + verificar Calendar |

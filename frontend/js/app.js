@@ -691,6 +691,7 @@ function updateGoogleUI(data) {
             el.textContent = label;
             googleScopesList.appendChild(el);
         });
+        loadCalendarEvents();
     } else {
         googleDisconnected.hidden = false;
         googleConnectedSection.hidden = true;
@@ -717,6 +718,146 @@ btnGoogleDisconnect.addEventListener('click', async () => {
         showToast('Error: ' + err.message);
     }
 });
+
+// --- Google Calendar ---
+
+let gcalPeriod = 'today';
+const gcalEvents = $('#gcal-events');
+const gcalForm = $('#gcal-form');
+const btnGcalAdd = $('#btn-gcal-add');
+const btnGcalCancel = $('#btn-gcal-cancel');
+const btnGcalSave = $('#btn-gcal-save');
+const gcalTabs = document.querySelectorAll('.gcal-tab');
+
+gcalTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+        gcalPeriod = tab.dataset.period;
+        gcalTabs.forEach(t => t.classList.toggle('active', t.dataset.period === gcalPeriod));
+        loadCalendarEvents();
+    });
+});
+
+btnGcalAdd.addEventListener('click', () => {
+    gcalForm.hidden = !gcalForm.hidden;
+    if (!gcalForm.hidden) {
+        // Pre-fill start/end with reasonable defaults
+        const now = new Date();
+        const start = new Date(now.getTime() + 60 * 60 * 1000); // +1h
+        const end = new Date(start.getTime() + 60 * 60 * 1000); // +1h
+        $('#gcal-start').value = toLocalISOString(start);
+        $('#gcal-end').value = toLocalISOString(end);
+        $('#gcal-summary').value = '';
+        $('#gcal-location').value = '';
+        $('#gcal-description').value = '';
+        $('#gcal-summary').focus();
+    }
+});
+
+btnGcalCancel.addEventListener('click', () => {
+    gcalForm.hidden = true;
+});
+
+btnGcalSave.addEventListener('click', async () => {
+    const summary = $('#gcal-summary').value.trim();
+    const start = $('#gcal-start').value;
+    const end = $('#gcal-end').value;
+    if (!summary || !start || !end) {
+        showToast('Completa titulo, inicio y fin');
+        return;
+    }
+    btnGcalSave.disabled = true;
+    try {
+        // Convert local datetime-local to ISO with timezone offset
+        const startISO = new Date(start).toISOString();
+        const endISO = new Date(end).toISOString();
+        await apiPost('/api/google/calendar/events', {
+            summary,
+            start: startISO,
+            end: endISO,
+            location: $('#gcal-location').value.trim() || null,
+            description: $('#gcal-description').value.trim() || null,
+        });
+        gcalForm.hidden = true;
+        showToast('Evento creado');
+        loadCalendarEvents();
+    } catch (err) {
+        showToast('Error: ' + err.message);
+    } finally {
+        btnGcalSave.disabled = false;
+    }
+});
+
+async function loadCalendarEvents() {
+    if (!googleConnected) return;
+    gcalEvents.innerHTML = '<div class="gcal-loading">Cargando...</div>';
+    try {
+        const endpoint = gcalPeriod === 'week'
+            ? '/api/google/calendar/events/week'
+            : '/api/google/calendar/events/today';
+        const events = await apiGet(endpoint);
+        renderCalendarEvents(events);
+    } catch (err) {
+        gcalEvents.innerHTML = '<div class="gcal-empty">Error cargando eventos</div>';
+    }
+}
+
+function renderCalendarEvents(events) {
+    gcalEvents.innerHTML = '';
+    if (events.length === 0) {
+        gcalEvents.innerHTML = '<div class="gcal-empty">Sin eventos</div>';
+        return;
+    }
+    events.forEach(ev => {
+        const el = document.createElement('div');
+        el.className = 'gcal-event';
+        const timeStr = formatCalendarTime(ev.start);
+        const locationHtml = ev.location
+            ? `<div class="gcal-event-location">${escapeHtml(ev.location)}</div>`
+            : '';
+        el.innerHTML = `
+            <div class="gcal-event-time">${escapeHtml(timeStr)}</div>
+            <div class="gcal-event-info">
+                <div class="gcal-event-title">${escapeHtml(ev.summary)}</div>
+                ${locationHtml}
+            </div>
+            <button class="gcal-event-delete" title="Eliminar">&times;</button>
+        `;
+        if (ev.html_link) {
+            el.querySelector('.gcal-event-info').style.cursor = 'pointer';
+            el.querySelector('.gcal-event-info').addEventListener('click', () => {
+                window.open(ev.html_link, '_blank');
+            });
+        }
+        el.querySelector('.gcal-event-delete').addEventListener('click', async () => {
+            if (!confirm('Eliminar evento?')) return;
+            try {
+                await apiDelete(`/api/google/calendar/events/${ev.id}`);
+                showToast('Evento eliminado');
+                loadCalendarEvents();
+            } catch (err) {
+                showToast('Error: ' + err.message);
+            }
+        });
+        gcalEvents.appendChild(el);
+    });
+}
+
+function formatCalendarTime(isoStr) {
+    if (!isoStr) return '';
+    // Date-only events (all-day)
+    if (isoStr.length === 10) return 'Todo el dia';
+    const d = new Date(isoStr);
+    return d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+}
+
+function toLocalISOString(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    const h = String(date.getHours()).padStart(2, '0');
+    const min = String(date.getMinutes()).padStart(2, '0');
+    return `${y}-${m}-${d}T${h}:${min}`;
+}
 
 // --- Selection Mode ---
 

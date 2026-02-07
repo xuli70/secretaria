@@ -179,6 +179,38 @@
             <div id="google-connected" class="google-section" hidden>
                 <div class="google-status-badge">Conectado</div>
                 <div id="google-scopes-list" class="google-scopes-list"></div>
+
+                <!-- Calendar Section -->
+                <div class="gcal-section">
+                    <div class="gcal-header">
+                        <span class="gcal-title">Calendar</span>
+                        <div class="gcal-tabs">
+                            <button class="gcal-tab active" data-period="today">Hoy</button>
+                            <button class="gcal-tab" data-period="week">Semana</button>
+                        </div>
+                        <button id="btn-gcal-add" class="btn-gcal-add" title="Crear evento">+</button>
+                    </div>
+                    <div id="gcal-events" class="gcal-events">
+                        <div class="gcal-loading">Cargando...</div>
+                    </div>
+                </div>
+
+                <!-- Create Event Form -->
+                <div id="gcal-form" class="gcal-form" hidden>
+                    <div class="gcal-form-title">Nuevo evento</div>
+                    <input type="text" id="gcal-summary" class="gcal-input" placeholder="Titulo del evento" required>
+                    <div class="gcal-form-row">
+                        <input type="datetime-local" id="gcal-start" class="gcal-input">
+                        <input type="datetime-local" id="gcal-end" class="gcal-input">
+                    </div>
+                    <input type="text" id="gcal-location" class="gcal-input" placeholder="Ubicacion (opcional)">
+                    <textarea id="gcal-description" class="gcal-input gcal-textarea" placeholder="Descripcion (opcional)" rows="2"></textarea>
+                    <div class="gcal-form-actions">
+                        <button id="btn-gcal-cancel" class="btn-gcal-cancel">Cancelar</button>
+                        <button id="btn-gcal-save" class="btn-gcal-save">Crear</button>
+                    </div>
+                </div>
+
                 <button id="btn-google-disconnect" class="btn-google-disconnect">Desconectar</button>
             </div>
         </div>
