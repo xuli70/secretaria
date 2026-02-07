@@ -3,7 +3,7 @@
 > **Objetivo:** Aplicación web mobile-first de asistente personal (secretaria) con chat continuo, gestión documental, generación de documentos y reenvío por Telegram
 > **Carpeta:** D:\MINIMAX\Secretaria
 > **Ultima actualizacion:** 2026-02-07
-> **Estado global:** Fase 7 completada + Explorador de archivos en sidebar
+> **Estado global:** Fase 7 completada + Explorador de archivos con filtro de existencia y descargas seguras
 
 ---
 
@@ -11,7 +11,7 @@
 
 Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases de desarrollo. El cerebro es MINIMAX AI (chat) + Perplexity (búsqueda externa). La interfaz es un chat oscuro tipo WhatsApp optimizado para teléfono (PWA). Backend en Python/FastAPI, SQLite como BD, Docker para contenedores, Coolify para despliegue final desde GitHub.
 
-**ESTADO:** Aplicacion funcionando correctamente en produccion. Explorador de archivos en sidebar con tabs (Conversaciones/Archivos) y arbol colapsable por tipo. Generacion de documentos soporta DOCX y TXT. Filtro backend de bloques `<think>` en streaming y en guardado/generacion. Documentos auto-regenerables si se pierden del disco tras redeploy.
+**ESTADO:** Aplicacion funcionando correctamente en produccion. Explorador de archivos en sidebar con tabs (Conversaciones/Archivos) y arbol colapsable por tipo. Archivos fantasma (sin archivo fisico en disco) filtrados del explorador. Descargas via fetch+blob con manejo de errores (sin abrir pestanas nuevas con JSON). Generacion de documentos soporta DOCX y TXT. Filtro backend de bloques `<think>` en streaming y en guardado/generacion. Documentos auto-regenerables si se pierden del disco tras redeploy.
 
 ---
 
@@ -667,6 +667,37 @@ Tabs en el sidebar existente (Conversaciones / Archivos) con un explorador de ar
 
 ---
 
+## Fix: Archivos fantasma en explorador + descargas seguras
+
+> **Estado:** [x] Completada
+> **Prioridad:** Media
+
+### Problema
+Tras redeploy en Coolify, los archivos fisicos en `/data/documentos/`, `/data/imagenes/` se pierden (el volumen persiste la BD SQLite pero no siempre los subdirectorios). El endpoint `GET /api/files` devolvia TODOS los registros File de la BD sin verificar existencia en disco, mostrando archivos fantasma en el explorador. Al pulsar un archivo inexistente, se abria una pestana nueva con `{"detail":"Archivo no encontrado en disco"}` sin forma de volver a la app.
+
+### Solucion
+**Backend (`routers/files.py`):**
+- Agregado `import os` y filtro `os.path.exists(f.filepath)` en el loop de `list_all_files()` — archivos sin archivo fisico en disco se saltan con `continue`, eliminando archivos fantasma de raiz
+
+**Frontend (`js/app.js`):**
+- Cambiado `<a href target="_blank">` por `<div>` clickable con event listener
+- Descarga via `fetch()` con header `Authorization: Bearer` (en vez de `?token=` en query param)
+- Respuesta OK → blob URL + descarga con filename original
+- Error → toast dentro de la app (sin navegar fuera)
+
+### Verificacion
+- [ ] Explorador solo muestra archivos que existen fisicamente en disco
+- [ ] Click en archivo existente → se descarga correctamente (sin abrir pestana nueva)
+- [ ] Si un archivo se borra del disco y se recarga el explorador → desaparece de la lista
+- [ ] Error de descarga → toast de error sin salir de la app
+- [ ] Token no expuesto en URL (usa header Authorization)
+
+### Archivos modificados
+- `backend/routers/files.py` — `import os`, filtro `os.path.exists()` en loop de list_all_files
+- `frontend/js/app.js` — renderFileExplorer: `<div>` con click handler, fetch+blob download, toast de error
+
+---
+
 ## Notas de proceso
 
 > **IMPORTANTE:** Este documento DEBE actualizarse al final de cada fase completada. Incluir: tareas realizadas, archivos creados/modificados, verificaciones y siguiente paso.
@@ -698,3 +729,4 @@ Tabs en el sidebar existente (Conversaciones / Archivos) con un explorador de ar
 | 19 | 2026-02-07 | Filtro think backend | Filtro de bloques `<think>` en backend: streaming filter stateful en minimax_ai.py (maneja tags partidos entre chunks) + regex safety net en chat.py antes de guardar en BD y generar DOCX | Verificar en produccion |
 | 20 | 2026-02-07 | Formato TXT docs | Soporte TXT en generacion de documentos: generate_txt() en backend, selector DOCX/TXT en frontend, bifurcacion por formato, auto-regeneracion por extension, mime dinamico, label dinamico en cards | Verificar en produccion |
 | 21 | 2026-02-07 | File explorer | Explorador de archivos en sidebar: tabs Conversaciones/Archivos, endpoint GET /api/files, arbol colapsable por tipo (Documentos/Imagenes/Generados), iconos por tipo, descarga directa, lifecycle integration | Verificar en produccion |
+| 22 | 2026-02-07 | Fix ghost files | Filtro os.path.exists en GET /api/files para eliminar archivos fantasma. Descargas via fetch+blob con toast de error en vez de navegacion directa a JSON. Auth via header Bearer en vez de query param | Verificar en produccion |
