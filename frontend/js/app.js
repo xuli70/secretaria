@@ -1329,6 +1329,172 @@ setupContactAutocomplete(gmailToInput, gmailToAC, (contact) => {
     gmailToInput.value = contact.email;
 });
 
+// --- Google Action Cards (inline in chat) ---
+
+function createGoogleActionCard(result) {
+    const t = result.type;
+    const card = document.createElement('div');
+    card.className = 'gaction-card';
+
+    if (t === 'calendar_events') {
+        const events = result.events || [];
+        const period = result.period || '';
+        card.innerHTML = `
+            <div class="gaction-header">
+                <span class="gaction-icon">&#128197;</span>
+                <span class="gaction-label">Eventos ${escapeHtml(period)}</span>
+                <span class="gaction-badge">${events.length}</span>
+            </div>
+        `;
+        if (events.length === 0) {
+            card.innerHTML += '<div class="gaction-empty">Sin eventos</div>';
+        } else {
+            const list = document.createElement('div');
+            list.className = 'gaction-list';
+            events.forEach(ev => {
+                const item = document.createElement('div');
+                item.className = 'gaction-item';
+                const timeStr = formatCalendarTime(ev.start);
+                const loc = ev.location ? ` · ${escapeHtml(ev.location)}` : '';
+                item.innerHTML = `
+                    <span class="gaction-item-time">${escapeHtml(timeStr)}</span>
+                    <span class="gaction-item-title">${escapeHtml(ev.summary || 'Sin titulo')}</span>
+                    <span class="gaction-item-sub">${loc}</span>
+                `;
+                if (ev.html_link) {
+                    item.style.cursor = 'pointer';
+                    item.addEventListener('click', () => window.open(ev.html_link, '_blank'));
+                }
+                list.appendChild(item);
+            });
+            card.appendChild(list);
+        }
+        return card;
+    }
+
+    if (t === 'calendar_created') {
+        const ev = result.event || {};
+        card.innerHTML = `
+            <div class="gaction-header">
+                <span class="gaction-icon">&#128197;</span>
+                <span class="gaction-label">Evento creado</span>
+            </div>
+            <div class="gaction-success">
+                <div class="gaction-success-icon">&#10003;</div>
+                <div class="gaction-success-info">
+                    <div class="gaction-success-title">${escapeHtml(ev.summary || 'Evento')}</div>
+                    <div class="gaction-success-detail">${escapeHtml(formatCalendarTime(ev.start) || '')}${ev.location ? ' · ' + escapeHtml(ev.location) : ''}</div>
+                </div>
+                ${ev.html_link ? `<a class="gaction-link" href="${escapeHtml(ev.html_link)}" target="_blank" rel="noopener">Abrir</a>` : ''}
+            </div>
+        `;
+        return card;
+    }
+
+    if (t === 'gmail_messages') {
+        const messages = result.messages || [];
+        const filter = result.filter || '';
+        card.innerHTML = `
+            <div class="gaction-header">
+                <span class="gaction-icon">&#9993;</span>
+                <span class="gaction-label">Correos ${escapeHtml(filter)}</span>
+                <span class="gaction-badge">${messages.length}</span>
+            </div>
+        `;
+        if (messages.length === 0) {
+            card.innerHTML += '<div class="gaction-empty">Sin correos</div>';
+        } else {
+            const list = document.createElement('div');
+            list.className = 'gaction-list';
+            messages.forEach(msg => {
+                const item = document.createElement('div');
+                item.className = 'gaction-item';
+                const fromShort = (msg.from || '').split('<')[0].trim() || msg.from;
+                item.innerHTML = `
+                    <span class="gaction-item-title" style="font-weight:${msg.unread ? '700' : '400'}">${escapeHtml(fromShort)}</span>
+                    <span class="gaction-item-sub">${escapeHtml(msg.subject || '(Sin asunto)')}</span>
+                `;
+                list.appendChild(item);
+            });
+            card.appendChild(list);
+        }
+        return card;
+    }
+
+    if (t === 'gmail_sent') {
+        card.innerHTML = `
+            <div class="gaction-header">
+                <span class="gaction-icon">&#9993;</span>
+                <span class="gaction-label">Correo enviado</span>
+            </div>
+            <div class="gaction-success">
+                <div class="gaction-success-icon">&#10003;</div>
+                <div class="gaction-success-info">
+                    <div class="gaction-success-title">Para: ${escapeHtml(result.to || '')}</div>
+                    <div class="gaction-success-detail">Asunto: ${escapeHtml(result.subject || '(sin asunto)')}</div>
+                </div>
+            </div>
+        `;
+        return card;
+    }
+
+    if (t === 'drive_files') {
+        const files = result.files || [];
+        const filter = result.filter || '';
+        card.innerHTML = `
+            <div class="gaction-header">
+                <span class="gaction-icon">&#128193;</span>
+                <span class="gaction-label">Drive ${escapeHtml(filter)}</span>
+                <span class="gaction-badge">${files.length}</span>
+            </div>
+        `;
+        if (files.length === 0) {
+            card.innerHTML += '<div class="gaction-empty">Sin archivos</div>';
+        } else {
+            const list = document.createElement('div');
+            list.className = 'gaction-list';
+            files.forEach(f => {
+                const item = document.createElement('div');
+                item.className = 'gaction-item';
+                const typeClass = f.file_type || 'file';
+                const typeLabel = typeClass.substring(0, 4).toUpperCase();
+                item.innerHTML = `
+                    <div class="gaction-item-icon" style="background:${getDriveColor(typeClass)}">${escapeHtml(typeLabel)}</div>
+                    <span class="gaction-item-title">${escapeHtml(f.name || '')}</span>
+                    <span class="gaction-item-sub">${f.size ? formatFileSize(f.size) : ''}</span>
+                `;
+                if (f.web_link) {
+                    item.style.cursor = 'pointer';
+                    item.addEventListener('click', () => window.open(f.web_link, '_blank'));
+                }
+                list.appendChild(item);
+            });
+            card.appendChild(list);
+        }
+        return card;
+    }
+
+    if (t === 'error') {
+        card.innerHTML = `
+            <div class="gaction-error">
+                <span class="gaction-error-icon">&#9888;</span>
+                <span class="gaction-error-text">${escapeHtml(result.message || 'Error desconocido')}</span>
+            </div>
+        `;
+        return card;
+    }
+
+    return null;
+}
+
+function getDriveColor(fileType) {
+    const colors = {
+        folder: '#fbbc04', gdoc: '#4285f4', gsheet: '#34a853',
+        gslides: '#fbbc04', pdf: '#ea4335', image: '#4285f4',
+    };
+    return colors[fileType] || '#34a853';
+}
+
 // --- Selection Mode ---
 
 function enterSelectionMode(initialBubble) {
@@ -1680,6 +1846,21 @@ async function sendMessage() {
                 if (!line.startsWith('data: ')) continue;
                 const data = line.slice(6);
                 if (data === '[DONE]') continue;
+
+                // Detect Google action event
+                if (data.startsWith('[GOOGLE_ACTION:') && data.endsWith(']')) {
+                    try {
+                        const actionResult = JSON.parse(data.slice(15, -1));
+                        const actionCard = createGoogleActionCard(actionResult);
+                        if (actionCard) {
+                            typingIndicator.hidden = true;
+                            aiBubble.style.display = '';
+                            aiBubble.insertBefore(actionCard, streamTextEl);
+                            scrollToBottom();
+                        }
+                    } catch (e) { /* ignore parse error */ }
+                    continue;
+                }
 
                 // Detect generated document event
                 if (data.startsWith('[FILE:') && data.endsWith(']')) {

@@ -14,6 +14,13 @@ from backend.models import User, Conversation, Message, File
 from backend.services.minimax_ai import chat_completion_stream, SYSTEM_PROMPT
 from backend.services.perplexity import search_completion_stream, SEARCH_SYSTEM_PROMPT
 from backend.services.doc_generator import generate_docx, generate_txt, DOC_SYSTEM_PROMPT
+from backend.services.google_actions import (
+    has_google_keywords,
+    detect_intent,
+    execute_action,
+    format_action_context,
+)
+from backend.routers.google import get_valid_credentials
 from backend.config import settings
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
@@ -339,6 +346,38 @@ async def send_message(
                 msg_content = "\n\n".join(file_parts) + "\n\n" + m.content
         ai_messages.append({"role": m.role, "content": msg_content})
 
+    # --- Google Actions: detect intent and execute if applicable ---
+    google_action_result = None
+    if content and not use_search and not generate_doc:
+        if has_google_keywords(content):
+            creds = get_valid_credentials(db, user.id)
+            if creds:
+                intent = await detect_intent(content)
+                if intent:
+                    google_action_result = execute_action(intent, creds)
+                    if google_action_result:
+                        ctx = format_action_context(google_action_result)
+                        if ctx:
+                            ai_messages.append({
+                                "role": "system",
+                                "content": (
+                                    ctx
+                                    + "\n\nResponde al usuario de forma natural incluyendo "
+                                    "la información anterior. Sé conciso y amable."
+                                ),
+                            })
+            else:
+                # Google not connected — hint the AI to suggest connecting
+                ai_messages.append({
+                    "role": "system",
+                    "content": (
+                        "El usuario parece querer realizar una acción con Google "
+                        "(Calendar, Gmail o Drive), pero no tiene su cuenta de Google "
+                        "conectada. Sugiérele que conecte su cuenta usando el botón "
+                        "de Google en la barra superior de la app."
+                    ),
+                })
+
     # Select stream function and model label
     if use_search:
         stream_fn = search_completion_stream
@@ -351,6 +390,12 @@ async def send_message(
     async def event_stream():
         # Emit user message ID so frontend can set data-msg-id on user bubble
         yield f"data: [USER_MSG_ID:{user_msg_id}]\n\n"
+
+        # Emit Google action result if any (before AI stream)
+        if google_action_result:
+            import json as _ga_json
+            safe_ga = _ga_json.dumps(google_action_result, ensure_ascii=False)
+            yield f"data: [GOOGLE_ACTION:{safe_ga}]\n\n"
 
         full_response = ""
         async for chunk in stream_fn(ai_messages):

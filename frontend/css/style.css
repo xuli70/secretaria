@@ -2381,6 +2381,188 @@ body.selection-mode .msg-bubble[data-msg-id].selected::after {
     text-overflow: ellipsis;
 }
 
+/* === Google Action Cards (inline in chat bubbles) === */
+.gaction-card {
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 6px;
+    font-size: 13px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(0,0,0,0.15);
+}
+
+.gaction-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.gaction-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.gaction-label {
+    flex: 1;
+}
+
+.gaction-badge {
+    font-size: 11px;
+    padding: 1px 7px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.08);
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.gaction-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.gaction-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    transition: background 0.12s;
+}
+
+.gaction-item:last-child {
+    border-bottom: none;
+}
+
+.gaction-item:hover {
+    background: rgba(255,255,255,0.04);
+}
+
+.gaction-item-time {
+    font-size: 11px;
+    font-weight: 600;
+    color: #4285f4;
+    min-width: 40px;
+    flex-shrink: 0;
+}
+
+.gaction-item-title {
+    flex: 1;
+    color: var(--text-primary);
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gaction-item-sub {
+    font-size: 11px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 140px;
+}
+
+.gaction-item-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    flex-shrink: 0;
+    color: #fff;
+    background: #34a853;
+}
+
+.gaction-empty {
+    padding: 12px 10px;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+
+/* Success confirmation cards */
+.gaction-success {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+}
+
+.gaction-success-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.gaction-success-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.gaction-success-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.gaction-success-detail {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gaction-link {
+    font-size: 11px;
+    color: #4285f4;
+    text-decoration: none;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.gaction-link:hover {
+    text-decoration: underline;
+}
+
+/* Error card */
+.gaction-error {
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.gaction-error-icon {
+    color: var(--danger);
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.gaction-error-text {
+    font-size: 12px;
+    color: var(--danger);
+}
+
 /* === Mobile (< 768px) === */
 @media (max-width: 768px) {
     .sidebar {
