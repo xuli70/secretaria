@@ -110,6 +110,8 @@ async def detect_intent(message: str) -> dict | None:
             data = resp.json()
             content = data["choices"][0]["message"]["content"].strip()
             logger.info("detect_intent raw content: %s", content[:300])
+            # Strip <think>...</think> reasoning blocks (MiniMax M2.1+)
+            content = re.sub(r"<think>[\s\S]*?</think>", "", content).strip()
             # Strip markdown code fences if present
             content = re.sub(r"^```(?:json)?\s*", "", content)
             content = re.sub(r"\s*```$", "", content)
