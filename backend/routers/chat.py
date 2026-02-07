@@ -246,9 +246,65 @@ async def send_message(
 
     user_msg_id = user_msg.id
 
+    # Auto-title on first user message
+    msg_count = db.query(Message).filter(Message.conversation_id == conv_id).count()
+    if msg_count == 1:
+        title_text = content or (attached_files[0].filename if attached_files else "Archivo")
+        title = title_text[:50].strip()
+        if len(title_text) > 50:
+            title += "..."
+        conv.title = title
+        db.commit()
+
+    # --- File-only shortcut: confirm receipt, don't call AI ---
+    file_only = bool(file_ids) and not content
+    if file_only:
+        filenames = ", ".join(f"**{f.filename}**" for f in attached_files)
+        confirm_text = (
+            f"Archivo recibido: {filenames}. "
+            "Estoy listo para trabajar con este documento. Decime qué necesitás."
+        )
+
+        async def file_only_stream():
+            yield f"data: [USER_MSG_ID:{user_msg_id}]\n\n"
+            safe = confirm_text.replace('\n', '\\n')
+            yield f"data: {safe}\n\n"
+
+            from backend.database import SessionLocal
+            save_db = SessionLocal()
+            try:
+                assistant_msg = Message(
+                    conversation_id=conv_id,
+                    role="assistant",
+                    content=confirm_text,
+                    model_used="system",
+                )
+                save_db.add(assistant_msg)
+                save_db.flush()
+                yield f"data: [MSG_ID:{assistant_msg.id}]\n\n"
+                save_db.query(Conversation).filter(Conversation.id == conv_id).update(
+                    {"updated_at": datetime.now(timezone.utc)}
+                )
+                save_db.commit()
+            finally:
+                save_db.close()
+
+            yield "data: [DONE]\n\n"
+
+        return StreamingResponse(
+            file_only_stream(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
     # Build message history for the AI
     recent = (
         db.query(Message)
+        .options(joinedload(Message.files))
         .filter(Message.conversation_id == conv_id)
         .order_by(Message.created_at.desc())
         .limit(MAX_HISTORY)
@@ -270,17 +326,15 @@ async def send_message(
         # For the current user message, use the AI content with file context
         if m.id == user_msg_id:
             msg_content = ai_content
+        # For older user messages with file attachments, enrich with extracted text
+        elif m.role == "user" and m.files:
+            file_parts = []
+            for f in m.files:
+                if f.extracted_text:
+                    file_parts.append(f"[Archivo adjunto: {f.filename}]\n{f.extracted_text}")
+            if file_parts:
+                msg_content = "\n\n".join(file_parts) + "\n\n" + m.content
         ai_messages.append({"role": m.role, "content": msg_content})
-
-    # Auto-title on first user message
-    is_first = len(recent) == 1 and recent[0].role == "user"
-    if is_first:
-        title_text = content or (attached_files[0].filename if attached_files else "Archivo")
-        title = title_text[:50].strip()
-        if len(title_text) > 50:
-            title += "..."
-        conv.title = title
-        db.commit()
 
     # Select stream function and model label
     if use_search:
