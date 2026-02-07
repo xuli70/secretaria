@@ -103,24 +103,21 @@ async def detect_intent(message: str) -> dict | None:
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.post(url, json=payload, headers=headers)
-            logger.info("detect_intent status=%s", resp.status_code)
             if resp.status_code != 200:
-                logger.warning("detect_intent bad status: %s %s", resp.status_code, resp.text[:200])
+                logger.warning("detect_intent bad status: %s", resp.status_code)
                 return None
             data = resp.json()
             content = data["choices"][0]["message"]["content"].strip()
-            logger.info("detect_intent raw content: %s", content[:300])
             # Strip <think>...</think> reasoning blocks (MiniMax M2.1+)
             content = re.sub(r"<think>[\s\S]*?</think>", "", content).strip()
             # Strip markdown code fences if present
             content = re.sub(r"^```(?:json)?\s*", "", content)
             content = re.sub(r"\s*```$", "", content)
             result = json.loads(content)
-            logger.info("detect_intent parsed: %s", result)
             if result.get("action"):
                 return result
     except Exception as e:
-        logger.exception("detect_intent error: %s", e)
+        logger.warning("detect_intent error: %s", e)
 
     return None
 

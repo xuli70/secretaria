@@ -1,10 +1,7 @@
 import asyncio
-import logging
 import os
 import re
 from datetime import datetime, timezone
-
-logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -29,69 +26,6 @@ from backend.config import settings
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
 MAX_HISTORY = 50  # max messages sent to the AI
-
-
-# --- Temporary debug endpoint for Google intent detection ---
-@router.post("/debug-intent")
-async def debug_intent(
-    body: dict,
-    user=Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    import httpx
-    import json as _json
-    content = body.get("message", "")
-    kw_match = has_google_keywords(content)
-    creds = get_valid_credentials(db, user.id)
-
-    # Raw MiniMax intent call for debugging
-    raw_minimax = None
-    minimax_error = None
-    try:
-        from backend.services.google_actions import INTENT_SYSTEM_PROMPT, WEEKDAYS_ES
-        now = datetime.now()
-        today_str = now.strftime("%Y-%m-%d")
-        weekday = WEEKDAYS_ES[now.weekday()]
-        system = INTENT_SYSTEM_PROMPT.replace("{today}", today_str).replace("{weekday}", weekday)
-        url = f"{settings.MINIMAX_API_URL}/chat/completions"
-        payload = {
-            "model": settings.MINIMAX_MODEL,
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": content},
-            ],
-            "temperature": 0.1,
-            "max_tokens": 300,
-        }
-        headers = {
-            "Authorization": f"Bearer {settings.MINIMAX_API_KEY}",
-            "Content-Type": "application/json",
-        }
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.post(url, json=payload, headers=headers)
-            raw_minimax = {
-                "status": resp.status_code,
-                "body": resp.text[:1000],
-            }
-    except Exception as e:
-        minimax_error = str(e)
-
-    intent = None
-    action_result = None
-    if kw_match and creds:
-        intent = await detect_intent(content)
-        if intent:
-            action_result = execute_action(intent, creds)
-    return {
-        "message": content,
-        "keyword_match": kw_match,
-        "has_creds": creds is not None,
-        "minimax_raw": raw_minimax,
-        "minimax_error": minimax_error,
-        "intent": intent,
-        "action_result_type": action_result.get("type") if action_result else None,
-        "action_result_preview": str(action_result)[:500] if action_result else None,
-    }
 
 
 # --- Schemas ---
@@ -415,17 +349,12 @@ async def send_message(
     # --- Google Actions: detect intent and execute if applicable ---
     google_action_result = None
     if content and not use_search and not generate_doc:
-        logger.info("Checking Google keywords for: %s", content[:80])
         if has_google_keywords(content):
-            logger.info("Google keywords matched!")
             creds = get_valid_credentials(db, user.id)
-            logger.info("Google creds: %s", "OK" if creds else "NONE")
             if creds:
                 intent = await detect_intent(content)
-                logger.info("Detected intent: %s", intent)
                 if intent:
                     google_action_result = execute_action(intent, creds)
-                    logger.info("Action result type: %s", google_action_result.get("type") if google_action_result else "NONE")
                     if google_action_result:
                         ctx = format_action_context(google_action_result)
                         if ctx:
@@ -436,7 +365,6 @@ async def send_message(
                                 "la información anterior. Sé conciso y amable."
                             )
             else:
-                logger.info("No Google creds, suggesting connection")
                 # Google not connected — hint the AI to suggest connecting
                 # Append to initial system prompt (MiniMax only allows system role first)
                 ai_messages[0]["content"] += (
