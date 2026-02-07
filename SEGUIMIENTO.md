@@ -3,7 +3,7 @@
 > **Objetivo:** Aplicación web mobile-first de asistente personal (secretaria) con chat continuo, gestión documental, generación de documentos y reenvío por Telegram
 > **Carpeta:** D:\MINIMAX\Secretaria
 > **Ultima actualizacion:** 2026-02-07
-> **Estado global:** Fase 7 completada + File-only upload espera instrucciones
+> **Estado global:** Fase 7 completada + Filtro backend de bloques think
 
 ---
 
@@ -11,7 +11,7 @@
 
 Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases de desarrollo. El cerebro es MINIMAX AI (chat) + Perplexity (búsqueda externa). La interfaz es un chat oscuro tipo WhatsApp optimizado para teléfono (PWA). Backend en Python/FastAPI, SQLite como BD, Docker para contenedores, Coolify para despliegue final desde GitHub.
 
-**ESTADO:** Aplicacion funcionando correctamente en produccion. Documentos auto-regenerables si se pierden del disco tras redeploy. Upload de archivo sin texto espera instrucciones del usuario.
+**ESTADO:** Aplicacion funcionando correctamente en produccion. Filtro backend de bloques `<think>` en streaming y en guardado/generacion DOCX. Documentos auto-regenerables si se pierden del disco tras redeploy.
 
 ---
 
@@ -558,6 +558,33 @@ Tres cambios en `backend/routers/chat.py`:
 
 ---
 
+## Fix: Filtrar bloques `<think>` del modelo MiniMax en backend
+
+> **Estado:** [x] Completada
+> **Prioridad:** Media
+
+### Problema
+MiniMax-M2 incluye bloques de razonamiento (chain-of-thought) envueltos en `<think>...</think>` en sus respuestas. Estos bloques aparecian en las burbujas del chat durante streaming, se guardaban en la BD y se incluian en los documentos DOCX generados. El hotfix anterior (frontend `stripThinkTags()`) solo limpiaba la visualizacion; el contenido seguia presente en BD y DOCX.
+
+### Solucion
+Dos capas de filtrado en backend:
+
+1. **Filtro de streaming (`minimax_ai.py`)** — Funcion `_filter_think_blocks()` que procesa texto en tiempo real suprimiendo contenido entre `<think>` y `</think>`. Maneja tags partidos entre chunks SSE usando un buffer interno y estado `inside_think`. El buffer retiene caracteres que podrian ser inicio de un tag parcial (ej: `<thi` al final de un chunk).
+
+2. **Red de seguridad (`chat.py`)** — Antes de guardar `full_response` en la BD y antes de pasar a `generate_docx()`, se aplica `re.sub(r'<think>[\s\S]*?</think>', '', full_response)` para eliminar cualquier bloque residual.
+
+### Verificacion
+- [ ] Chat normal → no aparece contenido `<think>` en la burbuja
+- [ ] Generar documento → DOCX sin bloques de razonamiento
+- [ ] Contenido guardado en BD esta limpio
+- [ ] Mensajes sin think → funcionan igual que antes
+
+### Archivos modificados
+- `backend/services/minimax_ai.py` — Constantes THINK_OPEN/THINK_CLOSE, funcion `_filter_think_blocks()` (parser stateful con buffer), estado inside_think/buffer en `chat_completion_stream()`, flush de buffer al final del stream
+- `backend/routers/chat.py` — Import `re`, `clean_response` con regex antes de guardar en BD y antes de `generate_docx()`
+
+---
+
 ## Notas de proceso
 
 > **IMPORTANTE:** Este documento DEBE actualizarse al final de cada fase completada. Incluir: tareas realizadas, archivos creados/modificados, verificaciones y siguiente paso.
@@ -586,3 +613,4 @@ Tres cambios en `backend/routers/chat.py`:
 | 16 | 2026-02-07 | Fix auth descargas | Descargas de archivos devolvian "Not authenticated" porque browser no envia Authorization header en <a href>/<img src>. Fix: fallback a ?token= query param en backend + authUrl() helper en frontend | Verificar en produccion |
 | 17 | 2026-02-07 | Fix docs perdidos | Documentos generados perdidos tras redeploy Coolify. Fix: auto-regeneracion DOCX desde contenido del mensaje en BD cuando archivo falta del disco | Verificar en produccion |
 | 18 | 2026-02-07 | File-only upload | Upload de archivo sin texto ahora confirma recepcion y espera instrucciones en vez de auto-analizar. Historial enriquecido con archivos previos para que la IA tenga contexto en follow-ups | Verificar en produccion tras redeploy |
+| 19 | 2026-02-07 | Filtro think backend | Filtro de bloques `<think>` en backend: streaming filter stateful en minimax_ai.py (maneja tags partidos entre chunks) + regex safety net en chat.py antes de guardar en BD y generar DOCX | Verificar en produccion |
