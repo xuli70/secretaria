@@ -41,10 +41,41 @@
         <!-- Sidebar -->
         <aside id="sidebar" class="sidebar">
             <div class="sidebar-header">
-                <span class="sidebar-title">Conversaciones</span>
+                <span class="sidebar-title">Secretaria</span>
                 <button id="btn-new-conv" class="btn-icon" title="Nueva conversacion">+</button>
             </div>
+            <div class="sidebar-tabs">
+                <button class="sidebar-tab active" data-tab="conversations">Conversaciones</button>
+                <button class="sidebar-tab" data-tab="files">Archivos</button>
+            </div>
             <div id="conv-list" class="conv-list"></div>
+            <div id="file-explorer" class="file-explorer" hidden>
+                <div class="file-group" data-group="documents">
+                    <div class="file-group-header">
+                        <span class="file-group-chevron">&#9654;</span>
+                        <span class="file-group-name">Documentos</span>
+                        <span class="file-group-badge">0</span>
+                    </div>
+                    <div class="file-group-items"></div>
+                </div>
+                <div class="file-group" data-group="images">
+                    <div class="file-group-header">
+                        <span class="file-group-chevron">&#9654;</span>
+                        <span class="file-group-name">Imagenes</span>
+                        <span class="file-group-badge">0</span>
+                    </div>
+                    <div class="file-group-items"></div>
+                </div>
+                <div class="file-group" data-group="generated">
+                    <div class="file-group-header">
+                        <span class="file-group-chevron">&#9654;</span>
+                        <span class="file-group-name">Generados</span>
+                        <span class="file-group-badge">0</span>
+                    </div>
+                    <div class="file-group-items"></div>
+                </div>
+                <div id="file-explorer-empty" class="file-explorer-empty" hidden>Sin archivos</div>
+            </div>
         </aside>
 
         <!-- Main Chat Area -->

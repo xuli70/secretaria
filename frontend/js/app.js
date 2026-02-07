@@ -147,6 +147,10 @@ let isUploading = false;
 // --- Telegram state ---
 let telegramContacts = [];
 
+// --- File explorer state ---
+let activeTab = 'conversations';
+let explorerFiles = [];
+
 // --- Selection mode state ---
 let selectionMode = false;
 let selectedMessageIds = new Set();
@@ -182,6 +186,9 @@ const selectionCount = $('#selection-count');
 const btnSelectionClose = $('#btn-selection-close');
 const btnSelectionForward = $('#btn-selection-forward');
 const toastContainer = $('#toast-container');
+const fileExplorer = $('#file-explorer');
+const fileExplorerEmpty = $('#file-explorer-empty');
+const sidebarTabs = document.querySelectorAll('.sidebar-tab');
 
 // --- Sidebar toggle ---
 
@@ -197,6 +204,98 @@ function closeSidebar() {
 
 $('#btn-menu').addEventListener('click', openSidebar);
 sidebarOverlay.addEventListener('click', closeSidebar);
+
+// --- Sidebar Tabs ---
+
+sidebarTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+        const tabName = tab.dataset.tab;
+        if (tabName === activeTab) return;
+        activeTab = tabName;
+        sidebarTabs.forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
+        if (tabName === 'files') {
+            convList.hidden = true;
+            fileExplorer.hidden = false;
+            sidebar.classList.add('files-active');
+            loadExplorerFiles();
+        } else {
+            convList.hidden = false;
+            fileExplorer.hidden = true;
+            sidebar.classList.remove('files-active');
+        }
+    });
+});
+
+// --- File Explorer ---
+
+async function loadExplorerFiles() {
+    try {
+        explorerFiles = await apiGet('/api/files');
+        renderFileExplorer();
+    } catch (err) {
+        console.error('Error loading files:', err);
+    }
+}
+
+function renderFileExplorer() {
+    const groups = { documents: [], images: [], generated: [] };
+
+    explorerFiles.forEach(f => {
+        if (f.is_generated) groups.generated.push(f);
+        else if (f.file_type === 'image') groups.images.push(f);
+        else groups.documents.push(f);
+    });
+
+    const totalFiles = explorerFiles.length;
+    fileExplorerEmpty.hidden = totalFiles > 0;
+
+    for (const [groupName, files] of Object.entries(groups)) {
+        const groupEl = fileExplorer.querySelector(`[data-group="${groupName}"]`);
+        if (!groupEl) continue;
+
+        const badge = groupEl.querySelector('.file-group-badge');
+        const itemsContainer = groupEl.querySelector('.file-group-items');
+
+        badge.textContent = files.length;
+        itemsContainer.innerHTML = '';
+
+        if (files.length === 0) {
+            groupEl.classList.add('hidden-group');
+            groupEl.classList.remove('expanded');
+        } else {
+            groupEl.classList.remove('hidden-group');
+            files.forEach(f => {
+                const url = f.is_generated
+                    ? authUrl(API + `/api/documents/${f.id}`)
+                    : authUrl(API + `/api/upload/files/${f.id}`);
+                const ext = f.filename.split('.').pop().toUpperCase();
+                const meta = [ext, formatFileSize(f.size_bytes), formatDate(f.created_at)].filter(Boolean).join(' \u00b7 ');
+
+                const item = document.createElement('a');
+                item.className = 'file-explorer-item';
+                item.href = url;
+                item.target = '_blank';
+                item.rel = 'noopener';
+                item.innerHTML = `
+                    <div class="file-icon${f.is_generated ? ' generated' : ''}">${escapeHtml(ext)}</div>
+                    <div class="file-explorer-item-info">
+                        <div class="file-explorer-item-name">${escapeHtml(f.filename)}</div>
+                        <div class="file-explorer-item-meta">${meta}</div>
+                    </div>
+                `;
+                itemsContainer.appendChild(item);
+            });
+        }
+    }
+}
+
+// Collapse/expand file groups
+fileExplorer.addEventListener('click', (e) => {
+    const header = e.target.closest('.file-group-header');
+    if (!header) return;
+    const group = header.closest('.file-group');
+    if (group) group.classList.toggle('expanded');
+});
 
 // --- Search toggle ---
 
@@ -897,6 +996,9 @@ async function sendMessage() {
         // Update conversation title in sidebar if it changed
         await loadConversations();
 
+        // Refresh file explorer if active
+        if (activeTab === 'files') loadExplorerFiles();
+
     } catch (err) {
         typingIndicator.hidden = true;
         aiBubble.style.display = '';
@@ -939,8 +1041,15 @@ $('#btn-logout').addEventListener('click', () => {
     currentConversationId = null;
     conversations = [];
     telegramContacts = [];
+    explorerFiles = [];
+    activeTab = 'conversations';
     clearPendingFile();
     closeTelegramModal();
+    // Reset sidebar to conversations tab
+    sidebarTabs.forEach(t => t.classList.toggle('active', t.dataset.tab === 'conversations'));
+    convList.hidden = false;
+    fileExplorer.hidden = true;
+    sidebar.classList.remove('files-active');
     showScreen('login');
 });
 
@@ -991,6 +1100,7 @@ function enterApp() {
     clearPendingFile();
     loadConversations();
     loadTelegramContacts();
+    loadExplorerFiles();
 }
 
 function init() {

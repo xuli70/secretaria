@@ -14,6 +14,7 @@ from backend.routers import chat as chat_router
 from backend.routers import upload as upload_router
 from backend.routers import documents as documents_router
 from backend.routers import telegram as telegram_router
+from backend.routers import files as files_router
 
 
 @asynccontextmanager
@@ -75,6 +76,7 @@ app.include_router(chat_router.router)
 app.include_router(upload_router.router)
 app.include_router(documents_router.router)
 app.include_router(telegram_router.router)
+app.include_router(files_router.router)
 
 # Static frontend files — must be last (catches all unmatched paths)
 frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend")
