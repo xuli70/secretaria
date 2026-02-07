@@ -913,7 +913,7 @@ msgInput.addEventListener('input', autoResizeInput);
 
 function autoResizeInput() {
     msgInput.style.height = 'auto';
-    msgInput.style.height = Math.min(msgInput.scrollHeight, 120) + 'px';
+    msgInput.style.height = Math.min(msgInput.scrollHeight, 150) + 'px';
 }
 
 // --- New conversation ---

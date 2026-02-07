@@ -455,7 +455,7 @@ html, body {
     font-family: inherit;
     resize: none;
     outline: none;
-    max-height: 120px;
+    max-height: 150px;
     line-height: 1.4;
     overflow-y: auto;
 }
@@ -1109,5 +1109,30 @@ body.selection-mode .msg-bubble[data-msg-id].selected::after {
 
     .msg-bubble {
         max-width: 90%;
+    }
+
+    .input-bar-row {
+        flex-wrap: wrap;
+        padding: 6px 8px;
+        gap: 4px 8px;
+    }
+
+    .btn-attach,
+    .btn-search-toggle,
+    .btn-doc-toggle {
+        width: 34px;
+        height: 34px;
+    }
+
+    .msg-input {
+        flex-basis: calc(100% - 50px);
+        min-width: 0;
+        order: 4;
+    }
+
+    .btn-send {
+        width: 38px;
+        height: 38px;
+        order: 5;
     }
 }

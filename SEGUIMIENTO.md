@@ -386,13 +386,30 @@ El reenvio a Telegram fallaba con "Bad Request: can't parse entities" cuando el 
 - [ ] Contador se actualiza en toolbar
 - [ ] Boton forward deshabilitado con 0 seleccionados
 - [ ] Click forward → modal contactos (modo picker, sin formulario)
-- [ ] Seleccionar contacto → envio bulk → toast "Enviado a X"
-- [ ] Mensaje llega a Telegram con formato correcto ([Tu]/[Secretaria] + timestamps)
+- [x] Seleccionar contacto → envio bulk → toast "Enviado a X"
+- [x] Mensaje llega a Telegram con formato correcto ([Tu]/[Secretaria] + timestamps)
 - [ ] Archivos adjuntos llegan como documentos separados
 - [ ] Click X en toolbar → sale de modo seleccion
 - [ ] Cambiar conversacion → sale de modo seleccion automaticamente
 - [ ] Right-click en desktop → activa modo seleccion
 - [ ] Mensajes recien enviados (streaming) obtienen data-msg-id y son seleccionables
+
+### Test API en produccion (2026-02-07)
+
+> **URL:** https://secretaria.axcsol.com (TODAS las pruebas se hacen contra produccion, NO localhost)
+
+| Paso | Endpoint | Resultado |
+|------|----------|-----------|
+| Health check | GET /health | 200 OK |
+| Login | POST /api/auth/login | JWT obtenido (user: xulii) |
+| Bot status | GET /api/telegram/bot-status | configured: true, bot: Xulita_bot |
+| Contactos | GET /api/telegram/contacts | 2 contactos: SebastianXL (954140845), XULITA (8555711611) |
+| Conversaciones | GET /api/chat/conversations | 6 conversaciones disponibles |
+| Mensajes conv 6 | GET /api/chat/conversations/6/messages | 4 mensajes (ids 19-22) |
+| **Envio bulk** | POST /api/telegram/send-bulk {msg 21+22 → contact 1} | **ok: true, "Enviado"** |
+| Historial | GET /api/telegram/history | ids 9,10 status "sent" a SebastianXL |
+
+**Nota:** El contacto XULITA (chat_id 8555711611) tiene todos los envios en status "error" — verificar que el usuario haya iniciado /start con @Xulita_bot o que el chat_id sea correcto.
 
 ### Archivos modificados
 - `backend/routers/telegram.py` — SendBulkRequest schema, split_telegram_text helper, POST /api/telegram/send-bulk endpoint
@@ -425,3 +442,4 @@ El reenvio a Telegram fallaba con "Bad Request: can't parse entities" cuando el 
 | 10 | 2026-02-06 | Seguridad auth | Registro publico eliminado, credenciales via env vars (APP_USERNAME/APP_PASSWORD), auto-creacion de usuario al arrancar | Verificar deploy con nuevas credenciales |
 | 11 | 2026-02-07 | Fix Telegram | Eliminado parse_mode HTML de telegram_bot.py, fix reenvio con caracteres especiales. App completa funcionando en produccion | Mantenimiento continuo |
 | 12 | 2026-02-07 | Fase 7 | Multi-select Telegram forwarding: selection mode (long-press/right-click), bulk send endpoint, contact picker, toast feedback. Reemplaza forward-per-bubble | Verificar en produccion |
+| 13 | 2026-02-07 | Test produccion | Test API completo contra https://secretaria.axcsol.com: health, login, bot-status, contacts, send-bulk OK. Envio bulk (msgs 21+22) a SebastianXL exitoso. Contacto XULITA con errores (chat_id pendiente de verificar) | Verificar UI manual (long-press, selection mode) |
