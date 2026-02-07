@@ -20,6 +20,11 @@ from backend.services.google_calendar import (
     create_event,
     delete_event,
 )
+from backend.services.google_gmail import (
+    list_messages,
+    get_message,
+    send_message,
+)
 
 router = APIRouter(prefix="/api/google", tags=["google"])
 
@@ -223,3 +228,62 @@ def calendar_delete_event(
     creds = _require_google(db, user.id)
     delete_event(creds, event_id)
     return {"ok": True}
+
+
+# ── Gmail endpoints ──────────────────────────────────────────────
+
+
+@router.get("/gmail/messages")
+def gmail_list_messages(
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+    q: str = "",
+    max: int = 20,
+):
+    creds = _require_google(db, user.id)
+    return list_messages(creds, query=q, max_results=max)
+
+
+@router.get("/gmail/messages/unread")
+def gmail_unread_messages(
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+    max: int = 20,
+):
+    creds = _require_google(db, user.id)
+    return list_messages(creds, query="is:unread", max_results=max)
+
+
+@router.get("/gmail/messages/{message_id}")
+def gmail_get_message(
+    message_id: str,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    creds = _require_google(db, user.id)
+    return get_message(creds, message_id)
+
+
+class SendEmailBody(BaseModel):
+    to: str
+    subject: str
+    body: str
+    cc: str | None = None
+    bcc: str | None = None
+
+
+@router.post("/gmail/send")
+def gmail_send_message(
+    data: SendEmailBody,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    creds = _require_google(db, user.id)
+    return send_message(
+        creds,
+        to=data.to,
+        subject=data.subject,
+        body=data.body,
+        cc=data.cc,
+        bcc=data.bcc,
+    )

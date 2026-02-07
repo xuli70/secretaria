@@ -3,7 +3,7 @@
 > **Objetivo:** Aplicación web mobile-first de asistente personal (secretaria) con chat continuo, gestión documental, generación de documentos y reenvío por Telegram
 > **Carpeta:** D:\MINIMAX\Secretaria
 > **Ultima actualizacion:** 2026-02-07
-> **Estado global:** Fase 9+10+11 completadas — Google OAuth 2.0 + Google Calendar integrado
+> **Estado global:** Fase 9+10+11+12 completadas — Google OAuth 2.0 + Calendar + Gmail integrado
 
 ---
 
@@ -11,7 +11,7 @@
 
 Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases de desarrollo. El cerebro es MINIMAX AI (chat) + Perplexity (búsqueda externa). La interfaz es un chat oscuro tipo WhatsApp optimizado para teléfono (PWA). Backend en Python/FastAPI, SQLite como BD, Docker para contenedores, Coolify para despliegue final desde GitHub.
 
-**ESTADO:** Aplicacion funcionando correctamente en produccion. Google OAuth 2.0 integrado con Google Calendar: lectura de eventos (hoy/semana), creacion y eliminacion de eventos, UI en modal Google con tabs y formulario. Explorador de archivos en sidebar con tabs y arbol colapsable. Archivos recuperables tras redeploy. Generacion de documentos DOCX/TXT. Filtro backend de bloques `<think>`.
+**ESTADO:** Aplicacion funcionando correctamente en produccion. Google OAuth 2.0 integrado con Google Calendar y Gmail. Calendar: lectura de eventos (hoy/semana), creacion y eliminacion. Gmail: inbox, no leidos, detalle de mensaje, envio de correo, badge de no leidos. UI en modal Google con secciones Calendar y Gmail. Explorador de archivos en sidebar con tabs y arbol colapsable. Archivos recuperables tras redeploy. Generacion de documentos DOCX/TXT. Filtro backend de bloques `<think>`.
 
 ---
 
@@ -872,6 +872,37 @@ Clasificacion de archivos en 3 estados: disponible, recuperable, perdido.
 
 ---
 
+## Fase 12: Gmail — Lectura y envio de correos
+
+> **Estado:** [x] Completada
+> **Prioridad:** Media
+
+### Tareas
+- [x] Crear `backend/services/google_gmail.py` con funciones:
+  - `list_messages(creds, query, max_results)` — listar mensajes con metadata (From, Subject, Date)
+  - `get_message(creds, message_id)` — detalle completo con body extraido
+  - `send_message(creds, to, subject, body, cc?, bcc?)` — enviar correo via MIME
+- [x] Agregar 4 endpoints Gmail en `backend/routers/google.py`:
+  - `GET /api/google/gmail/messages?q=&max=` — listar mensajes (busqueda opcional)
+  - `GET /api/google/gmail/messages/unread` — mensajes no leidos (query is:unread)
+  - `GET /api/google/gmail/messages/{message_id}` — detalle completo
+  - `POST /api/google/gmail/send` — enviar correo (SendEmailBody model)
+- [x] Frontend: seccion Gmail dentro del modal Google (visible solo cuando conectado)
+- [x] Frontend: tabs Inbox/No leidos para filtrar correos
+- [x] Frontend: emails como cards (remitente, asunto, snippet, fecha, indicador unread)
+- [x] Frontend: badge rojo con conteo de no leidos
+- [x] Frontend: vista detalle de email (click en card → subject, from, to, date, body)
+- [x] Frontend: formulario de composicion (to, subject, body) con envio
+
+### Archivos creados/modificados
+- `backend/services/google_gmail.py` — CREADO: _get_service, list_messages, get_message, send_message, _get_header, _format_message_summary, _format_message_full, _extract_body
+- `backend/routers/google.py` — Import google_gmail, 4 endpoints Gmail, SendEmailBody model
+- `frontend/index.html` — Seccion gmail-section en google-connected (tabs, message list, compose form, detail view)
+- `frontend/css/style.css` — Estilos gmail-section, gmail-header, gmail-tabs, gmail-msg, gmail-compose, gmail-detail, gmail-unread-badge, btn-gmail-*
+- `frontend/js/app.js` — Estado gmailTab, refs DOM Gmail, loadGmailMessages, renderGmailMessages, formatGmailDate, openGmailDetail, compose handlers, integracion con updateGoogleUI
+
+---
+
 ## Notas de proceso
 
 > **IMPORTANTE:** Este documento DEBE actualizarse al final de cada fase completada. Incluir: tareas realizadas, archivos creados/modificados, verificaciones y siguiente paso.
@@ -908,3 +939,4 @@ Clasificacion de archivos en 3 estados: disponible, recuperable, perdido.
 | 24 | 2026-02-07 | Recoverable files | Archivos perdidos tras redeploy clasificados en "Recuperable" (auto-regeneracion al click) o "No disponible" (irrecuperables). Campo `recoverable` en API. TXT subidos recuperados desde `extracted_text`. Refresh post-descarga | Verificar en produccion |
 | 25 | 2026-02-07 | Fase 9+10 Google OAuth | Infraestructura seguridad (Fernet encrypt, GoogleToken model, config vars) + flujo OAuth completo (4 endpoints, modal UI, boton header, scopes badges, redirect handling). get_valid_credentials() para fases futuras | Build Docker + verificar OAuth flow |
 | 26 | 2026-02-07 | Fase 11 Google Calendar | google_calendar.py service (list/get/create/delete events), 5 endpoints en google router, UI Calendar en modal (tabs hoy/semana, event cards, create form) | Build Docker + verificar Calendar |
+| 27 | 2026-02-07 | Fase 12 Gmail | google_gmail.py service (list_messages, get_message, send_message), 4 endpoints Gmail en google router, UI Gmail en modal (tabs inbox/no leidos, email cards, compose form, detail view, badge no leidos) | Build Docker + verificar Gmail |

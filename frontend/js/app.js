@@ -692,6 +692,7 @@ function updateGoogleUI(data) {
             googleScopesList.appendChild(el);
         });
         loadCalendarEvents();
+        loadGmailMessages();
     } else {
         googleDisconnected.hidden = false;
         googleConnectedSection.hidden = true;
@@ -857,6 +858,140 @@ function toLocalISOString(date) {
     const h = String(date.getHours()).padStart(2, '0');
     const min = String(date.getMinutes()).padStart(2, '0');
     return `${y}-${m}-${d}T${h}:${min}`;
+}
+
+// --- Gmail ---
+
+let gmailTab = 'inbox';
+const gmailMessages = $('#gmail-messages');
+const gmailCompose = $('#gmail-compose');
+const gmailDetail = $('#gmail-detail');
+const btnGmailCompose = $('#btn-gmail-compose');
+const btnGmailCancel = $('#btn-gmail-cancel');
+const btnGmailSend = $('#btn-gmail-send');
+const btnGmailBack = $('#btn-gmail-back');
+const gmailUnreadBadge = $('#gmail-unread-badge');
+const gmailTabs = document.querySelectorAll('.gmail-tab');
+
+gmailTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+        gmailTab = tab.dataset.gmailTab;
+        gmailTabs.forEach(t => t.classList.toggle('active', t.dataset.gmailTab === gmailTab));
+        loadGmailMessages();
+    });
+});
+
+btnGmailCompose.addEventListener('click', () => {
+    gmailCompose.hidden = !gmailCompose.hidden;
+    gmailDetail.hidden = true;
+    if (!gmailCompose.hidden) {
+        $('#gmail-to').value = '';
+        $('#gmail-subject').value = '';
+        $('#gmail-body').value = '';
+        $('#gmail-to').focus();
+    }
+});
+
+btnGmailCancel.addEventListener('click', () => {
+    gmailCompose.hidden = true;
+});
+
+btnGmailSend.addEventListener('click', async () => {
+    const to = $('#gmail-to').value.trim();
+    const subject = $('#gmail-subject').value.trim();
+    const body = $('#gmail-body').value.trim();
+    if (!to) { showToast('Ingresa un destinatario'); return; }
+    if (!body) { showToast('Escribe un mensaje'); return; }
+    btnGmailSend.disabled = true;
+    try {
+        await apiPost('/api/google/gmail/send', { to, subject, body });
+        gmailCompose.hidden = true;
+        showToast('Correo enviado');
+        loadGmailMessages();
+    } catch (err) {
+        showToast('Error: ' + err.message);
+    } finally {
+        btnGmailSend.disabled = false;
+    }
+});
+
+btnGmailBack.addEventListener('click', () => {
+    gmailDetail.hidden = true;
+});
+
+async function loadGmailMessages() {
+    if (!googleConnected) return;
+    gmailMessages.innerHTML = '<div class="gmail-loading">Cargando...</div>';
+    gmailDetail.hidden = true;
+    try {
+        const endpoint = gmailTab === 'unread'
+            ? '/api/google/gmail/messages/unread'
+            : '/api/google/gmail/messages?max=20';
+        const messages = await apiGet(endpoint);
+        renderGmailMessages(messages);
+        // Update unread badge
+        if (gmailTab === 'inbox') {
+            const unreadCount = messages.filter(m => m.unread).length;
+            gmailUnreadBadge.textContent = unreadCount;
+            gmailUnreadBadge.hidden = unreadCount === 0;
+        }
+    } catch (err) {
+        gmailMessages.innerHTML = '<div class="gmail-empty">Error cargando correos</div>';
+    }
+}
+
+function renderGmailMessages(messages) {
+    gmailMessages.innerHTML = '';
+    if (messages.length === 0) {
+        gmailMessages.innerHTML = '<div class="gmail-empty">Sin correos</div>';
+        return;
+    }
+    messages.forEach(msg => {
+        const el = document.createElement('div');
+        el.className = 'gmail-msg' + (msg.unread ? ' unread' : '');
+        const dateStr = formatGmailDate(msg.date);
+        const fromShort = msg.from.split('<')[0].trim() || msg.from;
+        el.innerHTML = `
+            <div class="gmail-msg-row">
+                <div class="gmail-msg-from">${escapeHtml(fromShort)}</div>
+                <div class="gmail-msg-date">${escapeHtml(dateStr)}</div>
+            </div>
+            <div class="gmail-msg-subject">${escapeHtml(msg.subject || '(Sin asunto)')}</div>
+            <div class="gmail-msg-snippet">${escapeHtml(msg.snippet)}</div>
+        `;
+        el.addEventListener('click', () => openGmailDetail(msg.id));
+        gmailMessages.appendChild(el);
+    });
+}
+
+function formatGmailDate(dateStr) {
+    if (!dateStr) return '';
+    try {
+        const d = new Date(dateStr);
+        const now = new Date();
+        if (d.toDateString() === now.toDateString()) {
+            return d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+        }
+        return d.toLocaleDateString('es', { day: 'numeric', month: 'short' });
+    } catch {
+        return dateStr;
+    }
+}
+
+async function openGmailDetail(messageId) {
+    gmailDetail.hidden = false;
+    $('#gmail-detail-subject').textContent = 'Cargando...';
+    $('#gmail-detail-meta').textContent = '';
+    $('#gmail-detail-body').textContent = '';
+    try {
+        const msg = await apiGet(`/api/google/gmail/messages/${messageId}`);
+        $('#gmail-detail-subject').textContent = msg.subject || '(Sin asunto)';
+        $('#gmail-detail-meta').textContent = `De: ${msg.from}\nPara: ${msg.to}\nFecha: ${msg.date}`;
+        $('#gmail-detail-body').textContent = msg.body || '(Sin contenido de texto)';
+    } catch (err) {
+        $('#gmail-detail-subject').textContent = 'Error';
+        $('#gmail-detail-body').textContent = err.message;
+    }
 }
 
 // --- Selection Mode ---

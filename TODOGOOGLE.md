@@ -3,7 +3,7 @@
 > **Proyecto:** Secretaria — Asistente Personal PWA
 > **Objetivo:** Integrar Google Account (OAuth 2.0) para acceso a Calendar, Gmail, Drive y Contacts
 > **Fecha creacion:** 2026-02-07
-> **Estado global:** Fase 9+10+11 completadas (OAuth + Calendar)
+> **Estado global:** Fase 9+10+11+12 completadas (OAuth + Calendar + Gmail)
 
 ---
 
@@ -14,7 +14,7 @@
 | 9 | Seguridad de secretos Google + variables de entorno | Completada |
 | 10 | OAuth 2.0 — Flujo de autenticacion Google | Completada |
 | 11 | Google Calendar — Lectura y creacion de eventos | Completada |
-| 12 | Gmail — Lectura y envio de correos | Pendiente |
+| 12 | Gmail — Lectura y envio de correos | Completada |
 | 13 | Google Drive — Explorar y subir archivos | Pendiente |
 | 14 | Google Contacts — Lectura de contactos | Pendiente |
 | 15 | Comandos naturales — Chat con acciones Google | Pendiente |
@@ -136,27 +136,34 @@ Leer eventos del calendario del usuario y crear nuevos eventos desde el chat.
 
 ## Fase 12: Gmail — Lectura y envio de correos
 
-> **Estado:** [ ] Pendiente
+> **Estado:** [x] Completada
 > **Prioridad:** Media
 
 ### Objetivo
 Leer inbox del usuario y enviar correos desde el chat.
 
 ### Tareas
-- [ ] Crear `backend/services/google_gmail.py`:
-  - `list_messages(token, query, max_results)` — listar mensajes (inbox)
-  - `get_message(token, message_id)` — detalle de un mensaje
-  - `send_message(token, to, subject, body, cc?, bcc?)` — enviar correo
-  - `list_labels(token)` — listar labels/carpetas
-- [ ] Crear endpoints:
+- [x] Crear `backend/services/google_gmail.py`:
+  - `list_messages(creds, query, max_results)` — listar mensajes (inbox)
+  - `get_message(creds, message_id)` — detalle de un mensaje
+  - `send_message(creds, to, subject, body, cc?, bcc?)` — enviar correo
+- [x] Crear endpoints:
   - `GET /api/google/gmail/messages?q=&max=` — listar mensajes
   - `GET /api/google/gmail/messages/unread` — mensajes no leidos
   - `GET /api/google/gmail/messages/{id}` — detalle de mensaje
   - `POST /api/google/gmail/send` — enviar correo
-- [ ] Frontend: vista de inbox en sidebar o modal
-- [ ] Frontend: renderizar emails como cards (remitente, asunto, snippet, fecha)
-- [ ] Frontend: formulario de envio de correo (to, subject, body)
-- [ ] Frontend: indicador de correos no leidos
+- [x] Frontend: seccion Gmail dentro del modal Google (tabs Inbox/No leidos)
+- [x] Frontend: renderizar emails como cards (remitente, asunto, snippet, fecha)
+- [x] Frontend: formulario de envio de correo (to, subject, body)
+- [x] Frontend: indicador de correos no leidos (badge rojo)
+- [x] Frontend: vista detalle de email (click en card abre body completo)
+
+### Archivos creados/modificados
+- `backend/services/google_gmail.py` — CREADO: _get_service, list_messages, get_message, send_message, _get_header, _format_message_summary, _format_message_full, _extract_body
+- `backend/routers/google.py` — Agregados 4 endpoints Gmail, SendEmailBody model, import google_gmail
+- `frontend/index.html` — Seccion Gmail en google-connected: gmail-messages, gmail-compose form, gmail-detail view
+- `frontend/css/style.css` — Estilos gmail-section, gmail-header, gmail-tabs, gmail-msg, gmail-compose, gmail-detail, gmail-unread-badge, btn-gmail-*
+- `frontend/js/app.js` — loadGmailMessages, renderGmailMessages, formatGmailDate, openGmailDetail, gmailTabs, gmailCompose handlers, btnGmailSend
 
 ### Verificacion
 - [ ] `GET /api/google/gmail/messages/unread` → lista emails no leidos
