@@ -3,7 +3,7 @@
 > **Objetivo:** Aplicación web mobile-first de asistente personal (secretaria) con chat continuo, gestión documental, generación de documentos y reenvío por Telegram
 > **Carpeta:** D:\MINIMAX\Secretaria
 > **Ultima actualizacion:** 2026-02-07
-> **Estado global:** Fase 7 completada + Fix auth en descargas de archivos
+> **Estado global:** Fase 7 completada + Fix auto-regeneracion documentos perdidos
 
 ---
 
@@ -11,7 +11,7 @@
 
 Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases de desarrollo. El cerebro es MINIMAX AI (chat) + Perplexity (búsqueda externa). La interfaz es un chat oscuro tipo WhatsApp optimizado para teléfono (PWA). Backend en Python/FastAPI, SQLite como BD, Docker para contenedores, Coolify para despliegue final desde GitHub.
 
-**ESTADO:** Aplicacion funcionando correctamente en produccion. Fix auth en descargas — archivos y documentos accesibles desde browser.
+**ESTADO:** Aplicacion funcionando correctamente en produccion. Documentos auto-regenerables si se pierden del disco tras redeploy.
 
 ---
 
@@ -502,6 +502,35 @@ Todos los endpoints de servir archivos (`/api/documents/{id}`, `/api/upload/file
 
 ---
 
+## Fix: Documentos generados perdidos tras redeploy ("Archivo no encontrado en disco")
+
+> **Estado:** [x] Completada
+> **Prioridad:** Alta
+
+### Problema
+Al descargar un documento generado desde produccion (`/api/documents/{id}`), el API retornaba `{"detail":"Archivo no encontrado en disco"}`. El registro File existia en la BD (file_id=6, 37.7 KB) y la auth funcionaba, pero el archivo `.docx` fisico no existia en `/data/generados/`. La BD persiste correctamente (conversaciones visibles) porque usa volumen Docker, pero los archivos generados se perdieron durante un redeploy de Coolify.
+
+### Causa raiz
+Los archivos DOCX generados se almacenan en `/data/generados/` dentro del contenedor. Aunque el volumen `/data` es persistente (la BD SQLite sobrevive redeploys), los archivos generados se perdieron durante un redeploy. El endpoint de descarga simplemente retornaba 404 sin intentar recuperacion.
+
+### Solucion
+- [x] Modificar `download_document()` en `documents.py`: cuando el archivo falta del disco pero `f.message_id` existe, buscar el `Message` asociado y regenerar el DOCX con `generate_docx()` usando el contenido del mensaje
+- [x] Agregar imports: `Message`, `generate_docx`, `settings`
+- [x] El archivo regenerado se guarda en la ruta original (`f.filepath`), persistiendo para futuras descargas
+- [x] Si la regeneracion falla (sin message_id, sin contenido), se mantiene el error 404 original
+- [x] Push a GitHub → deploy automatico en Coolify
+
+### Verificacion
+- [ ] Descargar documento que falta del disco → se regenera y descarga correctamente
+- [ ] Descargar el mismo documento de nuevo → sirve el archivo ya regenerado (sin regenerar otra vez)
+- [ ] Documentos con archivo presente en disco → descarga normal sin cambios
+- [ ] Documentos sin message_id → error 404 como antes
+
+### Archivos modificados
+- `backend/routers/documents.py` — Imports (Message, generate_docx, settings), logica de auto-regeneracion en download_document() cuando archivo falta del disco
+
+---
+
 ## Notas de proceso
 
 > **IMPORTANTE:** Este documento DEBE actualizarse al final de cada fase completada. Incluir: tareas realizadas, archivos creados/modificados, verificaciones y siguiente paso.
@@ -528,3 +557,4 @@ Todos los endpoints de servir archivos (`/api/documents/{id}`, `/api/upload/file
 | 14 | 2026-02-07 | Hotfix think tags | Fix etiquetas `<think>` visibles durante streaming en modo documento. Regex solo eliminaba bloques completos; agregada segunda regex para bloques incompletos. Deploy verificado en produccion, descarga DOCX OK | Fix SSE newlines |
 | 15 | 2026-02-07 | Fix SSE newlines | Respuestas AI no visibles por newlines en chunks SSE. Modelo emite `<think>` con saltos de linea que rompen formato SSE. Fix: escapar `\n` → `\\n` en backend, decodificar en frontend | Verificar en produccion |
 | 16 | 2026-02-07 | Fix auth descargas | Descargas de archivos devolvian "Not authenticated" porque browser no envia Authorization header en <a href>/<img src>. Fix: fallback a ?token= query param en backend + authUrl() helper en frontend | Verificar en produccion |
+| 17 | 2026-02-07 | Fix docs perdidos | Documentos generados perdidos tras redeploy Coolify. Fix: auto-regeneracion DOCX desde contenido del mensaje en BD cuando archivo falta del disco | Verificar en produccion |
