@@ -170,6 +170,7 @@ const attachmentPreviewSize = $('#attachment-preview-size');
 const btnRemoveAttachment = $('#btn-remove-attachment');
 const btnSearchToggle = $('#btn-search-toggle');
 const btnDocToggle = $('#btn-doc-toggle');
+const docFormatSelect = $('#doc-format-select');
 const btnTelegram = $('#btn-telegram');
 const telegramOverlay = $('#telegram-overlay');
 const telegramModal = $('#telegram-modal');
@@ -201,7 +202,7 @@ sidebarOverlay.addEventListener('click', closeSidebar);
 
 btnSearchToggle.addEventListener('click', () => {
     searchMode = !searchMode;
-    if (searchMode) { docMode = false; btnDocToggle.classList.remove('active'); }
+    if (searchMode) { docMode = false; btnDocToggle.classList.remove('active'); docFormatSelect.hidden = true; }
     btnSearchToggle.classList.toggle('active', searchMode);
     updateInputPlaceholder();
 });
@@ -210,6 +211,7 @@ btnDocToggle.addEventListener('click', () => {
     docMode = !docMode;
     if (docMode) { searchMode = false; btnSearchToggle.classList.remove('active'); }
     btnDocToggle.classList.toggle('active', docMode);
+    docFormatSelect.hidden = !docMode;
     updateInputPlaceholder();
 });
 
@@ -681,7 +683,7 @@ function renderMessage(role, content, timestamp, files, messageId) {
     if (files && files.length > 0) {
         for (const f of files) {
             // Generated documents (assistant files with .docx from doc generation)
-            if (role === 'assistant' && f.filename && f.filename.startsWith('doc_') && f.filename.endsWith('.docx')) {
+            if (role === 'assistant' && f.filename && f.filename.startsWith('doc_') && (f.filename.endsWith('.docx') || f.filename.endsWith('.txt'))) {
                 bubble.appendChild(createDocCard(f));
             } else if (f.file_type === 'image') {
                 const img = document.createElement('img');
@@ -741,6 +743,7 @@ function renderMessage(role, content, timestamp, files, messageId) {
 }
 
 function createDocCard(fileInfo) {
+    const ext = fileInfo.filename.split('.').pop().toUpperCase();
     const card = document.createElement('a');
     card.className = 'msg-generated-doc';
     card.href = authUrl(API + `/api/documents/${fileInfo.id}`);
@@ -752,7 +755,7 @@ function createDocCard(fileInfo) {
         </div>
         <div class="doc-info">
             <div class="doc-name">${escapeHtml(fileInfo.filename)}</div>
-            <div class="doc-meta">DOCX${fileInfo.size_bytes ? ' · ' + formatFileSize(fileInfo.size_bytes) : ''}</div>
+            <div class="doc-meta">${ext}${fileInfo.size_bytes ? ' · ' + formatFileSize(fileInfo.size_bytes) : ''}</div>
         </div>
         <div class="doc-download">
             <svg viewBox="0 0 24 24"><path fill="currentColor" d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
@@ -811,6 +814,7 @@ async function sendMessage() {
 
     try {
         const body = { content, use_search: searchMode, generate_doc: docMode };
+        if (docMode) body.doc_format = docFormatSelect.value;
         if (fileIds.length > 0) body.file_ids = fileIds;
 
         const res = await fetch(API + `/api/chat/conversations/${currentConversationId}/messages`, {

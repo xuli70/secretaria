@@ -13,7 +13,7 @@ from backend.database import get_db
 from backend.models import User, Conversation, Message, File
 from backend.services.minimax_ai import chat_completion_stream, SYSTEM_PROMPT
 from backend.services.perplexity import search_completion_stream, SEARCH_SYSTEM_PROMPT
-from backend.services.doc_generator import generate_docx, DOC_SYSTEM_PROMPT
+from backend.services.doc_generator import generate_docx, generate_txt, DOC_SYSTEM_PROMPT
 from backend.config import settings
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
@@ -69,6 +69,7 @@ class MessageCreate(BaseModel):
     file_ids: list[int] | None = None
     use_search: bool = False
     generate_doc: bool = False
+    doc_format: str = "docx"
 
 
 # --- Conversation CRUD ---
@@ -315,6 +316,7 @@ async def send_message(
 
     use_search = body.use_search
     generate_doc = body.generate_doc
+    doc_format = body.doc_format if body.doc_format in ("docx", "txt") else "docx"
     if generate_doc:
         system_prompt = DOC_SYSTEM_PROMPT
     elif use_search:
@@ -376,11 +378,18 @@ async def send_message(
             # Send message ID so frontend can enable forward button
             yield f"data: [MSG_ID:{assistant_msg.id}]\n\n"
 
-            # Generate DOCX if in document mode
+            # Generate document if in document mode
             if generate_doc and clean_response:
                 save_dir = os.path.join(settings.DATA_DIR, "generados")
                 title = content[:60] if content else "Documento"
-                filepath, filename = generate_docx(clean_response, title, save_dir)
+
+                if doc_format == "txt":
+                    filepath, filename = generate_txt(clean_response, title, save_dir)
+                    mime = "text/plain"
+                else:
+                    filepath, filename = generate_docx(clean_response, title, save_dir)
+                    mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
                 size = os.path.getsize(filepath)
 
                 doc_file = File(
@@ -389,7 +398,7 @@ async def send_message(
                     filename=filename,
                     filepath=filepath,
                     file_type="document",
-                    mime_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    mime_type=mime,
                     size_bytes=size,
                 )
                 save_db.add(doc_file)

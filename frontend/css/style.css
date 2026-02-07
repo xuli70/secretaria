@@ -575,6 +575,28 @@ html, body {
     background: #7d6ff0;
 }
 
+/* === Document Format Selector === */
+.doc-format-select {
+    height: 34px;
+    padding: 0 8px;
+    border: 1px solid #6c5ce7;
+    border-radius: 17px;
+    background: var(--bg-input);
+    color: #c3b8ff;
+    font-size: 12px;
+    font-weight: 600;
+    outline: none;
+    cursor: pointer;
+    flex-shrink: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    text-align: center;
+}
+
+.doc-format-select:focus {
+    box-shadow: 0 0 0 2px rgba(108, 92, 231, 0.4);
+}
+
 /* === Generated Document Card === */
 .msg-generated-doc {
     display: flex;

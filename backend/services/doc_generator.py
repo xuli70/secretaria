@@ -78,3 +78,19 @@ def generate_docx(content: str, title: str, save_dir: str) -> tuple[str, str]:
     doc.save(filepath)
 
     return filepath, filename
+
+
+def generate_txt(content: str, title: str, save_dir: str) -> tuple[str, str]:
+    """Save content as a plain text file.
+
+    Returns (filepath, filename).
+    """
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"doc_{timestamp}.txt"
+    filepath = os.path.join(save_dir, filename)
+
+    os.makedirs(save_dir, exist_ok=True)
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(content)
+
+    return filepath, filename

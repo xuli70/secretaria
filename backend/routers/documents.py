@@ -10,7 +10,7 @@ from backend.auth import get_current_user
 from backend.config import settings
 from backend.database import get_db
 from backend.models import User, File, Message
-from backend.services.doc_generator import generate_docx
+from backend.services.doc_generator import generate_docx, generate_txt
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
@@ -70,15 +70,19 @@ def download_document(
             if msg and msg.content and msg.content.strip():
                 save_dir = os.path.join(settings.DATA_DIR, "generados")
                 os.makedirs(save_dir, exist_ok=True)
-                temp_path, _ = generate_docx(msg.content, "", save_dir)
+                if f.filename and f.filename.endswith(".txt"):
+                    temp_path, _ = generate_txt(msg.content, "", save_dir)
+                else:
+                    temp_path, _ = generate_docx(msg.content, "", save_dir)
                 os.makedirs(os.path.dirname(f.filepath), exist_ok=True)
                 os.replace(temp_path, f.filepath)
         # If still missing after regen attempt, return error
         if not f.filepath or not os.path.exists(f.filepath):
             raise HTTPException(status_code=404, detail="Archivo no encontrado en disco")
 
+    mime = f.mime_type or "application/octet-stream"
     return FileResponse(
         path=f.filepath,
         filename=f.filename,
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        media_type=mime,
     )
