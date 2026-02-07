@@ -3,7 +3,7 @@
 > **Objetivo:** Aplicación web mobile-first de asistente personal (secretaria) con chat continuo, gestión documental, generación de documentos y reenvío por Telegram
 > **Carpeta:** D:\MINIMAX\Secretaria
 > **Ultima actualizacion:** 2026-02-07
-> **Estado global:** Fase 7 completada — Multi-select Telegram forwarding
+> **Estado global:** Fase 7 completada + Hotfix think tags — Multi-select Telegram forwarding
 
 ---
 
@@ -420,6 +420,30 @@ El reenvio a Telegram fallaba con "Bad Request: can't parse entities" cuando el 
 
 ---
 
+## Hotfix: Etiquetas `<think>` visibles durante streaming
+
+> **Estado:** [x] Completada
+> **Prioridad:** Media
+
+### Problema
+Al generar documentos (modo documento activado), las etiquetas `<think>` del modelo AI se mostraban en la burbuja del chat durante el streaming. La funcion `stripThinkTags()` solo tenia una regex para bloques completos `<think>...</think>`, pero durante el streaming la etiqueta de cierre `</think>` aun no habia llegado, asi que la regex no hacia match y el texto de "pensamiento" se mostraba en pantalla.
+
+### Solucion
+- [x] Agregar segunda regex a `stripThinkTags()` para eliminar bloques incompletos `<think>...` (etiqueta abierta sin cierre)
+- [x] Push a GitHub + restart Coolify (deploy UUID: z880gk04gw4ccoc0c4cgc408, commit: 76cbd60)
+- [x] Verificar en produccion: streaming limpio sin `<think>`, tarjeta DOCX visible, descarga funcional
+
+### Verificacion
+- [x] JS actualizado en produccion (`stripThinkTags` con dos regex)
+- [x] Generacion de documento en streaming → burbuja limpia, sin texto de pensamiento
+- [x] Tarjeta DOCX aparece correctamente (nombre, tipo, tamano)
+- [x] Endpoint de descarga `/api/documents/{id}` → 200 OK, content-type DOCX, attachment correcto
+
+### Archivos modificados
+- `frontend/js/app.js` — `stripThinkTags()`: agregada regex `/<think>[\s\S]*$/gi` para bloques incompletos durante streaming
+
+---
+
 ## Notas de proceso
 
 > **IMPORTANTE:** Este documento DEBE actualizarse al final de cada fase completada. Incluir: tareas realizadas, archivos creados/modificados, verificaciones y siguiente paso.
@@ -443,3 +467,4 @@ El reenvio a Telegram fallaba con "Bad Request: can't parse entities" cuando el 
 | 11 | 2026-02-07 | Fix Telegram | Eliminado parse_mode HTML de telegram_bot.py, fix reenvio con caracteres especiales. App completa funcionando en produccion | Mantenimiento continuo |
 | 12 | 2026-02-07 | Fase 7 | Multi-select Telegram forwarding: selection mode (long-press/right-click), bulk send endpoint, contact picker, toast feedback. Reemplaza forward-per-bubble | Verificar en produccion |
 | 13 | 2026-02-07 | Test produccion | Test API completo contra https://secretaria.axcsol.com: health, login, bot-status, contacts, send-bulk OK. Envio bulk (msgs 21+22) a SebastianXL exitoso. Contacto XULITA con errores (chat_id pendiente de verificar) | Verificar UI manual (long-press, selection mode) |
+| 14 | 2026-02-07 | Hotfix think tags | Fix etiquetas `<think>` visibles durante streaming en modo documento. Regex solo eliminaba bloques completos; agregada segunda regex para bloques incompletos. Deploy verificado en produccion, descarga DOCX OK | Mantenimiento continuo |
