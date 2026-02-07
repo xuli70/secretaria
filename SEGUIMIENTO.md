@@ -3,7 +3,7 @@
 > **Objetivo:** Aplicación web mobile-first de asistente personal (secretaria) con chat continuo, gestión documental, generación de documentos y reenvío por Telegram
 > **Carpeta:** D:\MINIMAX\Secretaria
 > **Ultima actualizacion:** 2026-02-07
-> **Estado global:** Fase 9+10+11+12+13+14 completadas — Google OAuth 2.0 + Calendar + Gmail + Drive + Contacts integrado
+> **Estado global:** Fase 9+10+11+12+13+14+15 completadas + Fix bugs UX (Gmail Volver, Calendar banner, File delete)
 
 ---
 
@@ -971,6 +971,50 @@ Clasificacion de archivos en 3 estados: disponible, recuperable, perdido.
 
 ---
 
+## Fix: Bugs UX — Gmail Volver, Calendar Banner, File Delete
+
+> **Estado:** [x] Completada
+> **Prioridad:** Media
+
+### Problema
+Testing en produccion (Chrome DevTools) revelo 3 problemas:
+1. **Gmail "Volver"**: Al abrir detalle de email y pulsar "Volver", el detalle no se oculta. Lista y detalle se muestran simultaneamente.
+2. **Sin banner Calendar**: No hay aviso de eventos del dia al cargar la app.
+3. **Sin eliminar archivos**: En tab "Archivos" del sidebar, no hay opcion de borrar archivos.
+
+### Solucion
+
+**Fix 1: Gmail Volver** (`frontend/js/app.js`)
+- `openGmailDetail()`: agregar `gmailMessages.hidden = true` al abrir detalle
+- `btnGmailBack` handler: agregar `gmailMessages.hidden = false` al volver
+- Lista y detalle ahora son mutuamente excluyentes
+
+**Fix 2: Calendar Banner** (`frontend/index.html`, `frontend/css/style.css`, `frontend/js/app.js`)
+- HTML: div `#calendar-banner` antes de `#chat-messages` con icono, contenido y boton cerrar
+- CSS: banner horizontal con borde izquierdo azul, fondo sutil, responsive
+- JS: `loadCalendarBanner()` llama `GET /api/google/calendar/events/today`, renderiza eventos con hora y titulo
+- Se invoca desde `enterApp()` (despues de `checkGoogleStatus()`) y al conectar Google
+- Boton X para cerrar (dismissible, no reaparece hasta recargar)
+
+**Fix 3: Eliminar archivos** (`backend/routers/files.py`, `frontend/js/app.js`, `frontend/css/style.css`)
+- Backend: `DELETE /api/files/{file_id}` con validacion de ownership, elimina archivo fisico y registro BD
+- Frontend: boton X en cada file item del explorador, `confirm()` antes de borrar, refresh post-delete
+- CSS: `.file-explorer-item-delete` (opacity 0 → 1 on hover, color danger)
+
+### Verificacion
+- [ ] Gmail: abrir email → detalle visible, lista oculta → "Volver" → lista visible, detalle oculto
+- [ ] Calendar: recargar con Google conectado → banner con eventos de hoy → click X → se cierra
+- [ ] Archivos: hover en archivo → boton X visible → click → confirmar → archivo eliminado
+- [ ] Sin regresion en funcionalidades existentes
+
+### Archivos modificados
+- `frontend/js/app.js` — Fix Gmail volver (gmailMessages.hidden toggle), loadCalendarBanner(), file delete handler, calendarBanner DOM ref
+- `frontend/index.html` — Div #calendar-banner antes de #chat-messages
+- `frontend/css/style.css` — Estilos .calendar-banner, .file-explorer-item-delete
+- `backend/routers/files.py` — Import HTTPException, endpoint DELETE /api/files/{file_id}
+
+---
+
 ## Notas de proceso
 
 > **IMPORTANTE:** Este documento DEBE actualizarse al final de cada fase completada. Incluir: tareas realizadas, archivos creados/modificados, verificaciones y siguiente paso.
@@ -1010,3 +1054,4 @@ Clasificacion de archivos en 3 estados: disponible, recuperable, perdido.
 | 27 | 2026-02-07 | Fase 12 Gmail | google_gmail.py service (list_messages, get_message, send_message), 4 endpoints Gmail en google router, UI Gmail en modal (tabs inbox/no leidos, email cards, compose form, detail view, badge no leidos) | Build Docker + verificar Gmail |
 | 28 | 2026-02-07 | Fase 13 Google Drive | google_drive.py service (list_files, list_recent, get_file, download_file, upload_file, list_folders), 5 endpoints Drive en google router, UI Drive en modal (tabs recientes/buscar, file cards con iconos por tipo, search bar, upload form, descargar/abrir) | Build Docker + verificar Drive |
 | 29 | 2026-02-07 | Fase 14 Contacts | google_contacts.py service (People API: list, search, get), 3 endpoints Contacts en google router, autocomplete en Gmail compose (cache local + busqueda remota, dropdown con avatar/nombre/email, keyboard nav) | Build Docker + verificar Contacts |
+| 30 | 2026-02-07 | Fix bugs UX | Gmail Volver (lista/detalle mutuamente excluyentes), Calendar Banner (eventos de hoy en chat), File Delete (endpoint DELETE + boton X en explorador) | Push a GitHub + verificar en produccion |

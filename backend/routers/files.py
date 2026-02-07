@@ -1,6 +1,6 @@
 import os
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -67,3 +67,25 @@ def list_all_files(
             )
         )
     return result
+
+
+@router.delete("/{file_id}")
+def delete_file(
+    file_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Delete a file owned by the current user."""
+    file = (
+        db.query(File)
+        .join(File.conversation)
+        .filter(File.id == file_id, File.conversation.has(user_id=user.id))
+        .first()
+    )
+    if not file:
+        raise HTTPException(status_code=404, detail="Archivo no encontrado")
+    if file.filepath and os.path.exists(file.filepath):
+        os.remove(file.filepath)
+    db.delete(file)
+    db.commit()
+    return {"ok": True}

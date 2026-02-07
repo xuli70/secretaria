@@ -197,6 +197,8 @@ const googleConnectedSection = $('#google-connected');
 const googleScopesList = $('#google-scopes-list');
 const btnGoogleConnect = $('#btn-google-connect');
 const btnGoogleDisconnect = $('#btn-google-disconnect');
+const calendarBanner = $('#calendar-banner');
+const calendarBannerContent = $('#calendar-banner-content');
 const fileExplorer = $('#file-explorer');
 const fileExplorerEmpty = $('#file-explorer-empty');
 const sidebarTabs = document.querySelectorAll('.sidebar-tab');
@@ -300,7 +302,19 @@ function renderFileExplorer() {
                         <div class="file-explorer-item-name">${escapeHtml(f.filename)}</div>
                         <div class="file-explorer-item-meta">${meta}</div>
                     </div>
+                    <button class="file-explorer-item-delete" title="Eliminar">&times;</button>
                 `;
+                item.querySelector('.file-explorer-item-delete').addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    if (!confirm('Eliminar este archivo?')) return;
+                    try {
+                        await apiDelete(`/api/files/${f.id}`);
+                        showToast('Archivo eliminado');
+                        loadExplorerFiles();
+                    } catch (err) {
+                        showToast('Error: ' + err.message);
+                    }
+                });
                 if (!canClick) { itemsContainer.appendChild(item); return; }
                 item.addEventListener('click', async () => {
                     try {
@@ -695,6 +709,7 @@ function updateGoogleUI(data) {
         loadGmailMessages();
         loadDriveFiles();
         loadContactsCache();
+        loadCalendarBanner();
     } else {
         googleDisconnected.hidden = false;
         googleConnectedSection.hidden = true;
@@ -723,6 +738,39 @@ btnGoogleDisconnect.addEventListener('click', async () => {
         showToast('Error: ' + err.message);
     }
 });
+
+// --- Calendar Banner ---
+
+$('#btn-calendar-banner-close').addEventListener('click', () => {
+    calendarBanner.hidden = true;
+});
+
+async function loadCalendarBanner() {
+    if (!googleConnected) return;
+    try {
+        const events = await apiGet('/api/google/calendar/events/today');
+        if (!events || events.length === 0) {
+            calendarBanner.hidden = true;
+            return;
+        }
+        calendarBannerContent.innerHTML = '';
+        events.forEach(ev => {
+            const div = document.createElement('div');
+            div.className = 'calendar-banner-event';
+            const timeStr = ev.start && ev.start.length === 10
+                ? 'Todo el dia'
+                : ev.start ? new Date(ev.start).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }) : '';
+            div.innerHTML = `
+                <span class="calendar-banner-time">${escapeHtml(timeStr)}</span>
+                <span class="calendar-banner-title">${escapeHtml(ev.summary || 'Sin titulo')}</span>
+            `;
+            calendarBannerContent.appendChild(div);
+        });
+        calendarBanner.hidden = false;
+    } catch {
+        calendarBanner.hidden = true;
+    }
+}
 
 // --- Google Calendar ---
 
@@ -921,6 +969,7 @@ btnGmailSend.addEventListener('click', async () => {
 
 btnGmailBack.addEventListener('click', () => {
     gmailDetail.hidden = true;
+    gmailMessages.hidden = false;
 });
 
 async function loadGmailMessages() {
@@ -983,6 +1032,7 @@ function formatGmailDate(dateStr) {
 }
 
 async function openGmailDetail(messageId) {
+    gmailMessages.hidden = true;
     gmailDetail.hidden = false;
     $('#gmail-detail-subject').textContent = 'Cargando...';
     $('#gmail-detail-meta').textContent = '';
@@ -2017,7 +2067,7 @@ function enterApp() {
     loadConversations();
     loadTelegramContacts();
     loadExplorerFiles();
-    checkGoogleStatus();
+    checkGoogleStatus().then(() => loadCalendarBanner());
 
     // Detect Google OAuth redirect params
     const params = new URLSearchParams(window.location.search);
