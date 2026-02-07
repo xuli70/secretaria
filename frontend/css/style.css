@@ -377,6 +377,19 @@ html, body {
     background: rgba(255,255,255,0.06);
 }
 
+.file-explorer-item.unavailable {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.file-explorer-item.unavailable:hover {
+    background: transparent;
+}
+
+.file-explorer-item.unavailable .file-icon {
+    background: #555;
+}
+
 .file-explorer-item .file-icon {
     width: 34px;
     height: 34px;

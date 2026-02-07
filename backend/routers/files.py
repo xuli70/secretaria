@@ -20,6 +20,7 @@ class FileExplorerItem(BaseModel):
     size_bytes: int | None
     created_at: datetime
     is_generated: bool
+    available: bool
 
     class Config:
         from_attributes = True
@@ -40,7 +41,7 @@ def list_all_files(
     )
     result = []
     for f in files:
-        if not f.filepath or not os.path.exists(f.filepath):
+        if not f.filepath:
             continue
         result.append(
             FileExplorerItem(
@@ -51,6 +52,7 @@ def list_all_files(
                 size_bytes=f.size_bytes,
                 created_at=f.created_at,
                 is_generated="/generados/" in (f.filepath or ""),
+                available=os.path.exists(f.filepath),
             )
         )
     return result

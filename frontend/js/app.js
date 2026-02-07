@@ -234,6 +234,7 @@ async function loadExplorerFiles() {
         renderFileExplorer();
     } catch (err) {
         console.error('Error loading files:', err);
+        showToast('Error cargando archivos');
     }
 }
 
@@ -269,11 +270,13 @@ function renderFileExplorer() {
                     ? API + `/api/documents/${f.id}`
                     : API + `/api/upload/files/${f.id}`;
                 const ext = f.filename.split('.').pop().toUpperCase();
-                const meta = [ext, formatFileSize(f.size_bytes), formatDate(f.created_at)].filter(Boolean).join(' \u00b7 ');
+                const metaParts = [ext, formatFileSize(f.size_bytes), formatDate(f.created_at)];
+                if (!f.available) metaParts.push('No disponible');
+                const meta = metaParts.filter(Boolean).join(' \u00b7 ');
 
                 const item = document.createElement('div');
-                item.className = 'file-explorer-item';
-                item.style.cursor = 'pointer';
+                item.className = 'file-explorer-item' + (f.available ? '' : ' unavailable');
+                item.style.cursor = f.available ? 'pointer' : 'default';
                 item.innerHTML = `
                     <div class="file-icon${f.is_generated ? ' generated' : ''}">${escapeHtml(ext)}</div>
                     <div class="file-explorer-item-info">
@@ -281,6 +284,7 @@ function renderFileExplorer() {
                         <div class="file-explorer-item-meta">${meta}</div>
                     </div>
                 `;
+                if (!f.available) { itemsContainer.appendChild(item); return; }
                 item.addEventListener('click', async () => {
                     try {
                         const resp = await fetch(downloadUrl, {
