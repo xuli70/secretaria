@@ -7,8 +7,10 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from backend.auth import get_current_user
+from backend.config import settings
 from backend.database import get_db
-from backend.models import User, File
+from backend.models import User, File, Message
+from backend.services.doc_generator import generate_docx
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
@@ -62,7 +64,18 @@ def download_document(
         raise HTTPException(status_code=404, detail="Documento no encontrado")
 
     if not f.filepath or not os.path.exists(f.filepath):
-        raise HTTPException(status_code=404, detail="Archivo no encontrado en disco")
+        # Attempt to regenerate from message content
+        if f.message_id:
+            msg = db.query(Message).filter(Message.id == f.message_id).first()
+            if msg and msg.content and msg.content.strip():
+                save_dir = os.path.join(settings.DATA_DIR, "generados")
+                os.makedirs(save_dir, exist_ok=True)
+                temp_path, _ = generate_docx(msg.content, "", save_dir)
+                os.makedirs(os.path.dirname(f.filepath), exist_ok=True)
+                os.replace(temp_path, f.filepath)
+        # If still missing after regen attempt, return error
+        if not f.filepath or not os.path.exists(f.filepath):
+            raise HTTPException(status_code=404, detail="Archivo no encontrado en disco")
 
     return FileResponse(
         path=f.filepath,
