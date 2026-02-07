@@ -429,26 +429,22 @@ async def send_message(
                     if google_action_result:
                         ctx = format_action_context(google_action_result)
                         if ctx:
-                            ai_messages.append({
-                                "role": "system",
-                                "content": (
-                                    ctx
-                                    + "\n\nResponde al usuario de forma natural incluyendo "
-                                    "la información anterior. Sé conciso y amable."
-                                ),
-                            })
+                            # Append context to the initial system prompt (MiniMax only allows system role first)
+                            ai_messages[0]["content"] += (
+                                "\n\n" + ctx
+                                + "\n\nResponde al usuario de forma natural incluyendo "
+                                "la información anterior. Sé conciso y amable."
+                            )
             else:
                 logger.info("No Google creds, suggesting connection")
                 # Google not connected — hint the AI to suggest connecting
-                ai_messages.append({
-                    "role": "system",
-                    "content": (
-                        "El usuario parece querer realizar una acción con Google "
-                        "(Calendar, Gmail o Drive), pero no tiene su cuenta de Google "
-                        "conectada. Sugiérele que conecte su cuenta usando el botón "
-                        "de Google en la barra superior de la app."
-                    ),
-                })
+                # Append to initial system prompt (MiniMax only allows system role first)
+                ai_messages[0]["content"] += (
+                    "\n\nEl usuario parece querer realizar una acción con Google "
+                    "(Calendar, Gmail o Drive), pero no tiene su cuenta de Google "
+                    "conectada. Sugiérele que conecte su cuenta usando el botón "
+                    "de Google en la barra superior de la app."
+                )
 
     # Select stream function and model label
     if use_search:
