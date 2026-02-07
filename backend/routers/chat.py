@@ -298,7 +298,8 @@ async def send_message(
         full_response = ""
         async for chunk in stream_fn(ai_messages):
             full_response += chunk
-            yield f"data: {chunk}\n\n"
+            safe_chunk = chunk.replace('\n', '\\n')
+            yield f"data: {safe_chunk}\n\n"
 
         # Save assistant response in a new DB session
         from backend.database import SessionLocal

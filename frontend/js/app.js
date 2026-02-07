@@ -867,7 +867,7 @@ async function sendMessage() {
                     continue;
                 }
 
-                fullText += data;
+                fullText += data.replaceAll('\\n', '\n');
                 typingIndicator.hidden = true;
                 aiBubble.style.display = '';
                 streamTextEl.textContent = stripThinkTags(fullText);
