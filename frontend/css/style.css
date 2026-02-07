@@ -932,103 +932,159 @@ html, body {
     background: #0098e0;
 }
 
-/* === Forward Button on Bubbles === */
-.btn-forward {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    width: 28px;
-    height: 28px;
-    border: none;
-    border-radius: 50%;
-    background: rgba(0, 136, 204, 0.15);
-    color: #0088cc;
-    display: flex;
+/* === Selection Toolbar === */
+.selection-toolbar {
+    display: none;
     align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.15s, background 0.15s;
-}
-
-.msg-bubble.assistant:hover .btn-forward {
-    opacity: 1;
-}
-
-.btn-forward:hover {
-    background: rgba(0, 136, 204, 0.3);
-}
-
-/* === Forward Dropdown Menu === */
-.forward-menu {
-    position: absolute;
-    top: 36px;
-    right: 4px;
+    padding: 12px 16px;
     background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    min-width: 180px;
-    max-height: 200px;
-    overflow-y: auto;
-    z-index: 40;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    gap: 12px;
 }
 
-.forward-menu-item {
-    padding: 10px 14px;
-    font-size: 13px;
+body.selection-mode .selection-toolbar {
+    display: flex;
+}
+
+body.selection-mode .chat-header {
+    display: none;
+}
+
+body.selection-mode .input-bar {
+    display: none !important;
+}
+
+.selection-count {
+    flex: 1;
+    font-size: 15px;
+    font-weight: 600;
     color: var(--text-primary);
+}
+
+.btn-selection-forward {
+    color: #0088cc;
+}
+
+.btn-selection-forward:hover:not(:disabled) {
+    color: #0098e0;
+    background: rgba(0, 136, 204, 0.1);
+}
+
+.btn-selection-forward:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+/* === Selection Mode Bubbles === */
+body.selection-mode .msg-bubble[data-msg-id] {
     cursor: pointer;
-    border-bottom: 1px solid rgba(255,255,255,0.04);
-    transition: background 0.1s;
+    user-select: none;
+    -webkit-user-select: none;
+    padding-left: 36px;
+    transition: background 0.15s;
 }
 
-.forward-menu-item:last-child {
-    border-bottom: none;
+body.selection-mode .msg-bubble[data-msg-id]::before {
+    content: '';
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid var(--text-secondary);
+    background: transparent;
+    transition: all 0.15s;
 }
 
-.forward-menu-item:hover {
+body.selection-mode .msg-bubble[data-msg-id].selected::before {
+    border-color: var(--accent);
+    background: var(--accent);
+}
+
+body.selection-mode .msg-bubble[data-msg-id].selected::after {
+    content: '\2713';
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    pointer-events: none;
+}
+
+.msg-bubble.selected {
+    box-shadow: inset 0 0 0 1px rgba(0, 168, 132, 0.4);
+}
+
+.msg-bubble.selected.user {
+    background: #00734e;
+}
+
+.msg-bubble.selected.assistant {
+    background: #273844;
+}
+
+/* === Telegram Modal Picker Mode === */
+.telegram-modal.picker-mode .telegram-add-form {
+    display: none;
+}
+
+.telegram-modal.picker-mode .telegram-contact-item {
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.telegram-modal.picker-mode .telegram-contact-item:hover {
     background: rgba(0, 136, 204, 0.15);
 }
 
+.telegram-modal.picker-mode .telegram-contact-delete {
+    display: none;
+}
+
+/* === Toast Notification === */
+.toast-container {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    pointer-events: none;
+}
+
+.toast {
+    padding: 10px 20px;
+    border-radius: 20px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 14px;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.3s, transform 0.3s;
+    pointer-events: auto;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* === Empty contacts message (shared) === */
 .forward-menu-empty {
     padding: 12px 14px;
     font-size: 12px;
     color: var(--text-secondary);
     text-align: center;
-}
-
-/* === Forward Status Feedback === */
-.forward-status {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    padding: 4px 10px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 600;
-    z-index: 5;
-    animation: forward-fade 2s ease forwards;
-}
-
-.forward-status.sending {
-    background: rgba(0, 136, 204, 0.2);
-    color: #0088cc;
-}
-
-.forward-status.sent {
-    background: rgba(0, 168, 132, 0.2);
-    color: var(--accent);
-}
-
-.forward-status.error {
-    background: rgba(234, 67, 53, 0.2);
-    color: var(--danger);
-}
-
-@keyframes forward-fade {
-    0%, 70% { opacity: 1; }
-    100% { opacity: 0; pointer-events: none; }
 }
 
 /* === Mobile (< 768px) === */

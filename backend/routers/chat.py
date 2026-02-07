@@ -292,6 +292,9 @@ async def send_message(
 
     # Stream response
     async def event_stream():
+        # Emit user message ID so frontend can set data-msg-id on user bubble
+        yield f"data: [USER_MSG_ID:{user_msg_id}]\n\n"
+
         full_response = ""
         async for chunk in stream_fn(ai_messages):
             full_response += chunk

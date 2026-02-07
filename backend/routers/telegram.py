@@ -1,4 +1,5 @@
 import os
+import re
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -8,7 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 from backend.auth import get_current_user
 from backend.config import settings
 from backend.database import get_db
-from backend.models import User, Message, File, TelegramContact, TelegramSend
+from backend.models import User, Conversation, Message, File, TelegramContact, TelegramSend
 from backend.services import telegram_bot
 
 router = APIRouter(prefix="/api/telegram", tags=["telegram"])
@@ -33,6 +34,11 @@ class ContactOut(BaseModel):
 
 class SendRequest(BaseModel):
     message_id: int
+    contact_id: int
+
+
+class SendBulkRequest(BaseModel):
+    message_ids: list[int]
     contact_id: int
 
 
@@ -207,6 +213,139 @@ async def forward_message(
     send.sent_at = datetime.now(timezone.utc)
     db.commit()
     return SendResult(ok=True, detail="Enviado", send_id=send.id)
+
+
+# --- Bulk Send ---
+
+def _strip_think(text: str) -> str:
+    return re.sub(r"<think>[\s\S]*?</think>", "", text).strip()
+
+
+def split_telegram_text(text: str, max_len: int = 4096) -> list[str]:
+    """Split text into chunks of max_len, breaking at paragraph boundaries."""
+    if len(text) <= max_len:
+        return [text]
+    chunks = []
+    while text:
+        if len(text) <= max_len:
+            chunks.append(text)
+            break
+        # Find last double-newline within limit
+        cut = text.rfind("\n\n", 0, max_len)
+        if cut <= 0:
+            # Fallback: single newline
+            cut = text.rfind("\n", 0, max_len)
+        if cut <= 0:
+            cut = max_len
+        chunks.append(text[:cut].rstrip())
+        text = text[cut:].lstrip("\n")
+    return chunks
+
+
+@router.post("/send-bulk", response_model=SendResult)
+async def forward_bulk(
+    body: SendBulkRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Forward multiple messages (text + files) to a Telegram contact."""
+    if not settings.TELEGRAM_BOT_TOKEN:
+        raise HTTPException(status_code=400, detail="Telegram bot no configurado")
+
+    if not body.message_ids:
+        raise HTTPException(status_code=400, detail="Sin mensajes seleccionados")
+
+    # Verify contact ownership
+    contact = (
+        db.query(TelegramContact)
+        .filter(TelegramContact.id == body.contact_id, TelegramContact.user_id == user.id)
+        .first()
+    )
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contacto no encontrado")
+
+    # Fetch messages, verify ownership via conversation.user_id
+    messages = (
+        db.query(Message)
+        .options(joinedload(Message.files))
+        .join(Message.conversation)
+        .filter(
+            Message.id.in_(body.message_ids),
+            Conversation.user_id == user.id,
+        )
+        .order_by(Message.created_at.asc())
+        .all()
+    )
+
+    if not messages:
+        raise HTTPException(status_code=404, detail="Mensajes no encontrados")
+
+    # Build combined text
+    blocks = []
+    all_files = []
+    for msg in messages:
+        label = "[Tu]" if msg.role == "user" else "[Secretaria]"
+        ts = msg.created_at.strftime("%H:%M") if msg.created_at else ""
+        text = msg.content.strip()
+        if msg.role == "assistant":
+            text = _strip_think(text)
+        if text and text != "[Archivo adjunto]":
+            blocks.append(f"{label} {ts}\n{text}")
+        # Collect files
+        for f in msg.files:
+            if f.filepath and os.path.exists(f.filepath):
+                all_files.append(f)
+
+    combined = "\n\n".join(blocks)
+
+    # Create a TelegramSend record per message in the batch
+    send_ids = []
+    for msg in messages:
+        send = TelegramSend(
+            message_id=msg.id,
+            contact_id=contact.id,
+            status="sending",
+        )
+        db.add(send)
+        db.flush()
+        send_ids.append(send.id)
+    db.commit()
+
+    # Send text chunks
+    if combined:
+        for chunk in split_telegram_text(combined):
+            result = await telegram_bot.send_message(contact.chat_id, chunk)
+            if not result.get("ok"):
+                db.query(TelegramSend).filter(TelegramSend.id.in_(send_ids)).update(
+                    {"status": "error"}, synchronize_session=False
+                )
+                db.commit()
+                return SendResult(
+                    ok=False,
+                    detail=result.get("description", "Error enviando mensaje"),
+                )
+
+    # Send files
+    for f in all_files:
+        result = await telegram_bot.send_document(contact.chat_id, f.filepath, f.filename)
+        if not result.get("ok"):
+            db.query(TelegramSend).filter(TelegramSend.id.in_(send_ids)).update(
+                {"status": "partial"}, synchronize_session=False
+            )
+            db.commit()
+            return SendResult(
+                ok=False,
+                detail=f"Texto enviado, error en archivo: {f.filename}",
+            )
+
+    # Mark all as sent
+    now = datetime.now(timezone.utc)
+    db.query(TelegramSend).filter(TelegramSend.id.in_(send_ids)).update(
+        {"status": "sent", "sent_at": now}, synchronize_session=False
+    )
+    db.commit()
+
+    return SendResult(ok=True, detail="Enviado")
 
 
 # --- History ---

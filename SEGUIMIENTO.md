@@ -2,8 +2,8 @@
 
 > **Objetivo:** Aplicación web mobile-first de asistente personal (secretaria) con chat continuo, gestión documental, generación de documentos y reenvío por Telegram
 > **Carpeta:** D:\MINIMAX\Secretaria
-> **Ultima actualizacion:** 2026-02-06
-> **Estado global:** Fase 6 de 6 (completada) — PROYECTO COMPLETO
+> **Ultima actualizacion:** 2026-02-07
+> **Estado global:** Fase 7 completada — Multi-select Telegram forwarding
 
 ---
 
@@ -11,7 +11,7 @@
 
 Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases de desarrollo. El cerebro es MINIMAX AI (chat) + Perplexity (búsqueda externa). La interfaz es un chat oscuro tipo WhatsApp optimizado para teléfono (PWA). Backend en Python/FastAPI, SQLite como BD, Docker para contenedores, Coolify para despliegue final desde GitHub.
 
-**PROXIMO PASO:** Verificar deploy en produccion (https://secretaria.axcsol.com)
+**ESTADO:** Aplicacion funcionando correctamente en produccion. Multi-select Telegram forwarding implementado.
 
 ---
 
@@ -25,7 +25,7 @@ Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases 
 
 | Decision | Resultado | Fecha |
 |----------|-----------|-------|
-| Autenticación | Login completo (usuario + contraseña, JWT) | 2026-02-06 |
+| Autenticación | Login solo con credenciales de env vars (APP_USERNAME/APP_PASSWORD), sin registro publico | 2026-02-06 |
 | Estilo UI | Tema oscuro tipo WhatsApp, burbujas de chat | 2026-02-06 |
 | Streaming AI | SSE (Server-Sent Events) para respuestas en tiempo real | 2026-02-06 |
 | Modelo AI | MINIMAX MiniMax-M2 via API OpenAI-compatible | 2026-02-06 |
@@ -288,7 +288,7 @@ Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases 
 
 ### Configuracion Coolify (manual por el usuario)
 - App creada en Coolify con Dockerfile build
-- Variables de entorno configuradas: JWT_SECRET, MINIMAX_API_KEY, PERPLEXITY_API_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_DEFAULT_CHAT_ID
+- Variables de entorno configuradas: JWT_SECRET, MINIMAX_API_KEY, PERPLEXITY_API_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_DEFAULT_CHAT_ID, APP_USERNAME, APP_PASSWORD
 - Volumen persistente mapeado a /data
 - Puerto 8000 expuesto
 - Deploy automatico desde push a GitHub (branch main)
@@ -303,6 +303,103 @@ Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases 
 - `backend/config.py` — Agregado TELEGRAM_DEFAULT_CHAT_ID
 - `.env.example` — Agregado TELEGRAM_DEFAULT_CHAT_ID
 - `SEGUIMIENTO.md` — Actualizado con Fase 6 completada y deploy info
+
+---
+
+## Post-deploy: Seguridad auth
+
+> **Estado:** [x] Completada
+> **Prioridad:** Alta
+
+### Tareas
+- [x] Eliminar endpoint POST /api/auth/register (registro publico deshabilitado)
+- [x] Agregar APP_USERNAME y APP_PASSWORD a config.py como variables de entorno
+- [x] Crear funcion _ensure_admin_user() en main.py (auto-crea/actualiza usuario al arrancar)
+- [x] Eliminar boton "Crear cuenta" del frontend (index.html + app.js)
+- [x] Agregar APP_USERNAME y APP_PASSWORD a .env.example y .env local
+- [x] Verificar build Docker + health check + login con env vars
+- [x] Push a GitHub
+
+### Verificacion
+- [x] `docker compose up --build` arranca sin errores
+- [x] GET /health → 200 OK
+- [x] Login con credenciales de env vars → JWT valido
+- [x] POST /api/auth/register → 405 Method Not Allowed (endpoint eliminado)
+- [x] Frontend solo muestra boton "Entrar" (sin "Crear cuenta")
+
+### Archivos creados/modificados
+- `backend/config.py` — Agregados APP_USERNAME y APP_PASSWORD
+- `backend/main.py` — Funcion _ensure_admin_user() en lifespan, imports auth/SessionLocal/User
+- `backend/routers/auth.py` — Eliminado endpoint /register, limpiado import hash_password
+- `frontend/index.html` — Eliminado boton "Crear cuenta"
+- `frontend/js/app.js` — Eliminadas referencias a btnRegister y su event listener
+- `.env.example` — Agregados APP_USERNAME y APP_PASSWORD
+
+---
+
+## Post-deploy: Fix Telegram caracteres especiales
+
+> **Estado:** [x] Completada
+> **Prioridad:** Media
+
+### Problema
+El reenvio a Telegram fallaba con "Bad Request: can't parse entities" cuando el mensaje de la IA contenia caracteres especiales (`<`, `>`, `**`, etc.). La causa era `parse_mode: "HTML"` en `telegram_bot.send_message()`.
+
+### Solucion
+- [x] Eliminar `parse_mode: "HTML"` de `send_message()` en telegram_bot.py → envio como texto plano
+- [x] Push a GitHub → deploy automatico en Coolify
+
+### Verificacion
+- [x] Reenviar mensaje con caracteres especiales → banner verde "Enviado"
+- [x] Mensaje llega correctamente a Telegram
+- [x] Toda la aplicacion funciona en produccion (chat, busqueda, documentos, Telegram)
+
+### Archivos modificados
+- `backend/services/telegram_bot.py` — Eliminado parse_mode: "HTML" de send_message()
+
+---
+
+## Fase 7: Multi-Select Telegram Forwarding
+
+> **Estado:** [x] Completada
+> **Prioridad:** Media
+
+### Tareas
+- [x] Nuevo endpoint POST /api/telegram/send-bulk (schema SendBulkRequest, validacion ownership, combina mensajes con formato [Tu]/[Secretaria] HH:MM, split en chunks de 4096 chars, envio archivos adjuntos)
+- [x] Helper split_telegram_text() para dividir texto largo en limites de parrafo
+- [x] Emitir [USER_MSG_ID:{id}] en SSE stream para que burbujas user tengan data-msg-id
+- [x] Selection toolbar HTML (barra con boton cerrar, contador, boton forward Telegram)
+- [x] Selection mode CSS (toolbar, checkboxes circulares, tinte en burbujas seleccionadas, picker mode para modal, toast notifications)
+- [x] Eliminar estilos antiguos de forward (btn-forward, forward-menu, forward-status, forward-fade)
+- [x] Selection mode JS: estado (selectionMode, selectedMessageIds Set), funciones enter/exit/toggle
+- [x] Long-press (500ms touch) y right-click (contextmenu) para activar modo seleccion
+- [x] Click en burbujas para seleccionar/deseleccionar en modo seleccion
+- [x] Contact picker mode en modal Telegram (solo lista, sin formulario, click directo para enviar)
+- [x] forwardSelectedToTelegram() → POST /api/telegram/send-bulk → toast feedback
+- [x] Guards: exitSelectionMode al cambiar conversacion y logout, bloqueo sendMessage en modo seleccion
+- [x] renderMessage: data-msg-id en TODAS las burbujas (user + assistant), sin forward button individual
+- [x] SSE parsing: [USER_MSG_ID] para user bubble, [MSG_ID] simplificado sin forward button
+
+### Verificacion
+- [ ] Long-press en mensaje → entra modo seleccion, burbuja seleccionada con checkbox verde
+- [ ] Tap en mas burbujas → se seleccionan/deseleccionan (user Y assistant)
+- [ ] Contador se actualiza en toolbar
+- [ ] Boton forward deshabilitado con 0 seleccionados
+- [ ] Click forward → modal contactos (modo picker, sin formulario)
+- [ ] Seleccionar contacto → envio bulk → toast "Enviado a X"
+- [ ] Mensaje llega a Telegram con formato correcto ([Tu]/[Secretaria] + timestamps)
+- [ ] Archivos adjuntos llegan como documentos separados
+- [ ] Click X en toolbar → sale de modo seleccion
+- [ ] Cambiar conversacion → sale de modo seleccion automaticamente
+- [ ] Right-click en desktop → activa modo seleccion
+- [ ] Mensajes recien enviados (streaming) obtienen data-msg-id y son seleccionables
+
+### Archivos modificados
+- `backend/routers/telegram.py` — SendBulkRequest schema, split_telegram_text helper, POST /api/telegram/send-bulk endpoint
+- `backend/routers/chat.py` — Emitir [USER_MSG_ID:{id}] antes del streaming
+- `frontend/index.html` — Selection toolbar, toast container
+- `frontend/css/style.css` — Selection toolbar, checkboxes, selected bubbles, picker mode, toast; eliminados btn-forward, forward-menu, forward-status
+- `frontend/js/app.js` — Selection mode state/functions, long-press/contextmenu handlers, contact picker, forwardSelectedToTelegram, renderMessage sin forward button, SSE USER_MSG_ID parsing; eliminadas showForwardMenu, closeForwardMenus, forwardToTelegram, showForwardStatus
 
 ---
 
@@ -325,3 +422,6 @@ Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases 
 | 7 | 2026-02-06 | Fase 5 | Fase 5 completada: telegram_bot service, telegram router, modal contactos, forward button en burbujas, dropdown selector, feedback animado | Iniciar Fase 6: Deploy Coolify |
 | 8 | 2026-02-06 | Fase 6 | Fase 6 completada: .dockerignore creado, SEGUIMIENTO actualizado, proyecto listo para deploy Coolify | Push a GitHub y verificar deploy |
 | 9 | 2026-02-06 | Deploy | TELEGRAM_DEFAULT_CHAT_ID agregado, push a GitHub, variables configuradas en Coolify | Verificar deploy en produccion |
+| 10 | 2026-02-06 | Seguridad auth | Registro publico eliminado, credenciales via env vars (APP_USERNAME/APP_PASSWORD), auto-creacion de usuario al arrancar | Verificar deploy con nuevas credenciales |
+| 11 | 2026-02-07 | Fix Telegram | Eliminado parse_mode HTML de telegram_bot.py, fix reenvio con caracteres especiales. App completa funcionando en produccion | Mantenimiento continuo |
+| 12 | 2026-02-07 | Fase 7 | Multi-select Telegram forwarding: selection mode (long-press/right-click), bulk send endpoint, contact picker, toast feedback. Reemplaza forward-per-bubble | Verificar en produccion |

@@ -142,6 +142,10 @@ let isUploading = false;
 // --- Telegram state ---
 let telegramContacts = [];
 
+// --- Selection mode state ---
+let selectionMode = false;
+let selectedMessageIds = new Set();
+
 // --- DOM refs ---
 const sidebar = $('#sidebar');
 const sidebarOverlay = $('#sidebar-overlay');
@@ -167,6 +171,11 @@ const telegramModal = $('#telegram-modal');
 const telegramContactsList = $('#telegram-contacts-list');
 const telegramBotStatus = $('#telegram-bot-status');
 const telegramAddForm = $('#telegram-add-form');
+const selectionToolbar = $('#selection-toolbar');
+const selectionCount = $('#selection-count');
+const btnSelectionClose = $('#btn-selection-close');
+const btnSelectionForward = $('#btn-selection-forward');
+const toastContainer = $('#toast-container');
 
 // --- Sidebar toggle ---
 
@@ -253,6 +262,7 @@ async function createConversation() {
 }
 
 async function selectConversation(id) {
+    exitSelectionMode();
     currentConversationId = id;
     const conv = conversations.find(c => c.id === id);
     chatTitle.textContent = conv ? conv.title : 'Secretaria';
@@ -397,7 +407,7 @@ function openTelegramModal() {
 }
 
 function closeTelegramModal() {
-    telegramModal.classList.remove('active');
+    telegramModal.classList.remove('active', 'picker-mode');
     telegramOverlay.classList.remove('active');
 }
 
@@ -483,79 +493,165 @@ async function deleteTelegramContact(id) {
     }
 }
 
-async function forwardToTelegram(messageId, contactId, bubbleEl) {
-    // Remove any existing forward menu
-    closeForwardMenus();
+// --- Selection Mode ---
 
-    // Show sending feedback
-    showForwardStatus(bubbleEl, 'sending', 'Enviando...');
+function enterSelectionMode(initialBubble) {
+    if (selectionMode) return;
+    selectionMode = true;
+    selectedMessageIds.clear();
+    document.body.classList.add('selection-mode');
+    if (initialBubble && initialBubble.dataset.msgId) {
+        toggleMessageSelection(initialBubble);
+    }
+}
 
+function exitSelectionMode() {
+    if (!selectionMode) return;
+    selectionMode = false;
+    selectedMessageIds.clear();
+    document.body.classList.remove('selection-mode');
+    chatMessages.querySelectorAll('.msg-bubble.selected').forEach(b => b.classList.remove('selected'));
+    updateSelectionToolbar();
+}
+
+function toggleMessageSelection(bubble) {
+    const msgId = bubble.dataset.msgId;
+    if (!msgId) return;
+    const id = parseInt(msgId);
+    if (selectedMessageIds.has(id)) {
+        selectedMessageIds.delete(id);
+        bubble.classList.remove('selected');
+    } else {
+        selectedMessageIds.add(id);
+        bubble.classList.add('selected');
+    }
+    updateSelectionToolbar();
+}
+
+function updateSelectionToolbar() {
+    const count = selectedMessageIds.size;
+    selectionCount.textContent = `${count} seleccionado${count !== 1 ? 's' : ''}`;
+    btnSelectionForward.disabled = count === 0;
+}
+
+function showContactPicker() {
+    telegramModal.classList.add('active', 'picker-mode');
+    telegramOverlay.classList.add('active');
+    renderContactPicker();
+    checkBotStatus();
+}
+
+function closeContactPicker() {
+    telegramModal.classList.remove('active', 'picker-mode');
+    telegramOverlay.classList.remove('active');
+}
+
+function renderContactPicker() {
+    telegramContactsList.innerHTML = '';
+    if (telegramContacts.length === 0) {
+        telegramContactsList.innerHTML = '<div class="forward-menu-empty">Sin contactos. Abre Telegram para agregar uno.</div>';
+        return;
+    }
+    telegramContacts.forEach(c => {
+        const el = document.createElement('div');
+        el.className = 'telegram-contact-item';
+        el.innerHTML = `
+            <div class="telegram-contact-info">
+                <div class="telegram-contact-name">${escapeHtml(c.name)}</div>
+                <div class="telegram-contact-chatid">${escapeHtml(c.chat_id)}</div>
+            </div>
+        `;
+        el.addEventListener('click', () => {
+            closeContactPicker();
+            forwardSelectedToTelegram(c.id, c.name);
+        });
+        telegramContactsList.appendChild(el);
+    });
+}
+
+async function forwardSelectedToTelegram(contactId, contactName) {
+    const ids = Array.from(selectedMessageIds);
+    exitSelectionMode();
+
+    showToast('Enviando...');
     try {
-        const result = await apiPost('/api/telegram/send', {
-            message_id: messageId,
+        const result = await apiPost('/api/telegram/send-bulk', {
+            message_ids: ids,
             contact_id: contactId,
         });
         if (result.ok) {
-            showForwardStatus(bubbleEl, 'sent', 'Enviado');
+            showToast(`Enviado a ${contactName}`);
         } else {
-            showForwardStatus(bubbleEl, 'error', result.detail || 'Error');
+            showToast(result.detail || 'Error al enviar');
         }
     } catch (err) {
-        showForwardStatus(bubbleEl, 'error', err.message);
+        showToast('Error: ' + err.message);
     }
 }
 
-function showForwardStatus(bubbleEl, type, text) {
-    // Remove previous status
-    const prev = bubbleEl.querySelector('.forward-status');
-    if (prev) prev.remove();
-
-    const el = document.createElement('span');
-    el.className = `forward-status ${type}`;
-    el.textContent = text;
-    bubbleEl.appendChild(el);
-
-    // Auto-remove after animation
-    setTimeout(() => el.remove(), 2200);
-}
-
-function showForwardMenu(bubbleEl, messageId) {
-    closeForwardMenus();
-
-    const menu = document.createElement('div');
-    menu.className = 'forward-menu';
-
-    if (telegramContacts.length === 0) {
-        menu.innerHTML = '<div class="forward-menu-empty">Sin contactos</div>';
-    } else {
-        telegramContacts.forEach(c => {
-            const item = document.createElement('div');
-            item.className = 'forward-menu-item';
-            item.textContent = c.name;
-            item.addEventListener('click', (e) => {
-                e.stopPropagation();
-                forwardToTelegram(messageId, c.id, bubbleEl);
-            });
-            menu.appendChild(item);
-        });
-    }
-
-    bubbleEl.appendChild(menu);
-
-    // Close on outside click
+function showToast(message) {
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = message;
+    toastContainer.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('show'));
     setTimeout(() => {
-        document.addEventListener('click', closeForwardMenusHandler);
-    }, 0);
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 2500);
 }
 
-function closeForwardMenus() {
-    document.querySelectorAll('.forward-menu').forEach(m => m.remove());
-    document.removeEventListener('click', closeForwardMenusHandler);
-}
+// Selection toolbar handlers
+btnSelectionClose.addEventListener('click', exitSelectionMode);
+btnSelectionForward.addEventListener('click', showContactPicker);
 
-function closeForwardMenusHandler() {
-    closeForwardMenus();
-}
+// Long-press / right-click for selection mode
+let longPressTimer = null;
+let longPressTriggered = false;
+
+chatMessages.addEventListener('touchstart', (e) => {
+    const bubble = e.target.closest('.msg-bubble[data-msg-id]');
+    if (!bubble) return;
+    longPressTriggered = false;
+    longPressTimer = setTimeout(() => {
+        longPressTriggered = true;
+        e.preventDefault();
+        if (!selectionMode) {
+            enterSelectionMode(bubble);
+        } else {
+            toggleMessageSelection(bubble);
+        }
+    }, 500);
+}, { passive: false });
+
+chatMessages.addEventListener('touchend', () => {
+    clearTimeout(longPressTimer);
+});
+
+chatMessages.addEventListener('touchmove', () => {
+    clearTimeout(longPressTimer);
+});
+
+chatMessages.addEventListener('contextmenu', (e) => {
+    const bubble = e.target.closest('.msg-bubble[data-msg-id]');
+    if (!bubble) return;
+    e.preventDefault();
+    if (!selectionMode) {
+        enterSelectionMode(bubble);
+    } else {
+        toggleMessageSelection(bubble);
+    }
+});
+
+chatMessages.addEventListener('click', (e) => {
+    if (!selectionMode) return;
+    if (longPressTriggered) { longPressTriggered = false; return; }
+    const bubble = e.target.closest('.msg-bubble[data-msg-id]');
+    if (!bubble) return;
+    e.preventDefault();
+    e.stopPropagation();
+    toggleMessageSelection(bubble);
+});
 
 // --- Messages ---
 
@@ -566,6 +662,11 @@ function stripThinkTags(text) {
 function renderMessage(role, content, timestamp, files, messageId) {
     const bubble = document.createElement('div');
     bubble.className = `msg-bubble ${role}`;
+
+    // Set data-msg-id on ALL messages (user and assistant) for selection
+    if (messageId) {
+        bubble.dataset.msgId = messageId;
+    }
 
     // Render file attachments
     if (files && files.length > 0) {
@@ -580,6 +681,7 @@ function renderMessage(role, content, timestamp, files, messageId) {
                 img.alt = f.filename;
                 img.loading = 'lazy';
                 img.addEventListener('click', () => {
+                    if (selectionMode) return;
                     window.open(API + `/api/upload/files/${f.id}`, '_blank');
                 });
                 bubble.appendChild(img);
@@ -589,6 +691,9 @@ function renderMessage(role, content, timestamp, files, messageId) {
                 fileEl.href = API + `/api/upload/files/${f.id}`;
                 fileEl.target = '_blank';
                 fileEl.rel = 'noopener';
+                fileEl.addEventListener('click', (e) => {
+                    if (selectionMode) e.preventDefault();
+                });
 
                 const ext = f.filename.split('.').pop().toUpperCase();
                 fileEl.innerHTML = `
@@ -622,20 +727,6 @@ function renderMessage(role, content, timestamp, files, messageId) {
         bubble.appendChild(timeEl);
     }
 
-    // Forward button for assistant messages with a saved ID
-    if (role === 'assistant' && messageId) {
-        bubble.dataset.msgId = messageId;
-        const fwdBtn = document.createElement('button');
-        fwdBtn.className = 'btn-forward';
-        fwdBtn.title = 'Reenviar a Telegram';
-        fwdBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.28-.02-.12.03-2.07 1.32-5.84 3.87-.55.38-1.05.56-1.5.55-.49-.01-1.44-.28-2.15-.51-.87-.28-1.56-.43-1.5-.91.03-.25.38-.51 1.05-.78 4.12-1.79 6.87-2.97 8.26-3.54 3.93-1.62 4.75-1.9 5.28-1.91.12 0 .37.03.54.17.14.12.18.28.2.45-.01.06.01.24 0 .37z"/></svg>';
-        fwdBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            showForwardMenu(bubble, messageId);
-        });
-        bubble.appendChild(fwdBtn);
-    }
-
     chatMessages.appendChild(bubble);
     return bubble;
 }
@@ -666,6 +757,7 @@ function scrollToBottom() {
 }
 
 async function sendMessage() {
+    if (selectionMode) return;
     const content = msgInput.value.trim();
     const hasFile = pendingFileId !== null;
 
@@ -687,9 +779,9 @@ async function sendMessage() {
 
     clearPendingFile();
 
-    // Render user bubble with attachment
+    // Render user bubble with attachment (no messageId yet, will be set via SSE)
     const userFiles = fileForBubble ? [fileForBubble] : [];
-    renderMessage('user', content || '[Archivo adjunto]', new Date().toISOString(), userFiles);
+    const userBubble = renderMessage('user', content || '[Archivo adjunto]', new Date().toISOString(), userFiles);
     scrollToBottom();
 
     // Show typing indicator
@@ -757,20 +849,17 @@ async function sendMessage() {
                     continue;
                 }
 
-                // Detect message ID event (for forward button)
+                // Detect user message ID event
+                const userMsgIdMatch = data.match(/^\[USER_MSG_ID:(\d+)\]$/);
+                if (userMsgIdMatch) {
+                    userBubble.dataset.msgId = userMsgIdMatch[1];
+                    continue;
+                }
+
+                // Detect assistant message ID event
                 const msgIdMatch = data.match(/^\[MSG_ID:(\d+)\]$/);
                 if (msgIdMatch) {
-                    const msgId = parseInt(msgIdMatch[1]);
-                    aiBubble.dataset.msgId = msgId;
-                    const fwdBtn = document.createElement('button');
-                    fwdBtn.className = 'btn-forward';
-                    fwdBtn.title = 'Reenviar a Telegram';
-                    fwdBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.28-.02-.12.03-2.07 1.32-5.84 3.87-.55.38-1.05.56-1.5.55-.49-.01-1.44-.28-2.15-.51-.87-.28-1.56-.43-1.5-.91.03-.25.38-.51 1.05-.78 4.12-1.79 6.87-2.97 8.26-3.54 3.93-1.62 4.75-1.9 5.28-1.91.12 0 .37.03.54.17.14.12.18.28.2.45-.01.06.01.24 0 .37z"/></svg>';
-                    fwdBtn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        showForwardMenu(aiBubble, msgId);
-                    });
-                    aiBubble.appendChild(fwdBtn);
+                    aiBubble.dataset.msgId = msgIdMatch[1];
                     continue;
                 }
 
@@ -832,6 +921,7 @@ $('#btn-new-conv').addEventListener('click', createConversation);
 
 // --- Logout ---
 $('#btn-logout').addEventListener('click', () => {
+    exitSelectionMode();
     clearAuth();
     currentConversationId = null;
     conversations = [];
