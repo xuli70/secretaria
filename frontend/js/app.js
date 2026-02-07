@@ -656,7 +656,11 @@ chatMessages.addEventListener('click', (e) => {
 // --- Messages ---
 
 function stripThinkTags(text) {
-    return text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+    // Strip complete <think>...</think> blocks
+    let result = text.replace(/<think>[\s\S]*?<\/think>/gi, '');
+    // Strip incomplete <think> block (opening tag arrived, closing not yet — during streaming)
+    result = result.replace(/<think>[\s\S]*$/gi, '');
+    return result.trim();
 }
 
 function renderMessage(role, content, timestamp, files, messageId) {
