@@ -21,6 +21,7 @@ class FileExplorerItem(BaseModel):
     created_at: datetime
     is_generated: bool
     available: bool
+    recoverable: bool
 
     class Config:
         from_attributes = True
@@ -43,6 +44,15 @@ def list_all_files(
     for f in files:
         if not f.filepath:
             continue
+        is_generated = "/generados/" in (f.filepath or "")
+        available = os.path.exists(f.filepath)
+        # Recoverable: generated docs with message_id, or files with extracted_text
+        recoverable = False
+        if not available:
+            if is_generated and f.message_id:
+                recoverable = True
+            elif f.extracted_text:
+                recoverable = True
         result.append(
             FileExplorerItem(
                 id=f.id,
@@ -51,8 +61,9 @@ def list_all_files(
                 mime_type=f.mime_type,
                 size_bytes=f.size_bytes,
                 created_at=f.created_at,
-                is_generated="/generados/" in (f.filepath or ""),
-                available=os.path.exists(f.filepath),
+                is_generated=is_generated,
+                available=available,
+                recoverable=recoverable,
             )
         )
     return result

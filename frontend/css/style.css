@@ -390,6 +390,19 @@ html, body {
     background: #555;
 }
 
+.file-explorer-item.recoverable {
+    opacity: 0.65;
+    cursor: pointer;
+}
+
+.file-explorer-item.recoverable:hover {
+    background: rgba(255,255,255,0.06);
+}
+
+.file-explorer-item.recoverable .file-icon {
+    background: #7c6f3a;
+}
+
 .file-explorer-item .file-icon {
     width: 34px;
     height: 34px;

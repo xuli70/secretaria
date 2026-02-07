@@ -271,12 +271,18 @@ function renderFileExplorer() {
                     : API + `/api/upload/files/${f.id}`;
                 const ext = f.filename.split('.').pop().toUpperCase();
                 const metaParts = [ext, formatFileSize(f.size_bytes), formatDate(f.created_at)];
-                if (!f.available) metaParts.push('No disponible');
+                if (!f.available && f.recoverable) metaParts.push('Recuperable');
+                else if (!f.available) metaParts.push('No disponible');
                 const meta = metaParts.filter(Boolean).join(' \u00b7 ');
 
+                const canClick = f.available || f.recoverable;
+                let itemClass = 'file-explorer-item';
+                if (!f.available && f.recoverable) itemClass += ' recoverable';
+                else if (!f.available) itemClass += ' unavailable';
+
                 const item = document.createElement('div');
-                item.className = 'file-explorer-item' + (f.available ? '' : ' unavailable');
-                item.style.cursor = f.available ? 'pointer' : 'default';
+                item.className = itemClass;
+                item.style.cursor = canClick ? 'pointer' : 'default';
                 item.innerHTML = `
                     <div class="file-icon${f.is_generated ? ' generated' : ''}">${escapeHtml(ext)}</div>
                     <div class="file-explorer-item-info">
@@ -284,7 +290,7 @@ function renderFileExplorer() {
                         <div class="file-explorer-item-meta">${meta}</div>
                     </div>
                 `;
-                if (!f.available) { itemsContainer.appendChild(item); return; }
+                if (!canClick) { itemsContainer.appendChild(item); return; }
                 item.addEventListener('click', async () => {
                     try {
                         const resp = await fetch(downloadUrl, {
@@ -304,6 +310,8 @@ function renderFileExplorer() {
                         a.click();
                         a.remove();
                         URL.revokeObjectURL(blobUrl);
+                        // Refresh explorer after successful download (file may now be available)
+                        if (!f.available) loadExplorerFiles();
                     } catch (e) {
                         showToast('Error: ' + e.message);
                     }

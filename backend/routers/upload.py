@@ -107,7 +107,13 @@ def serve_file(
         raise HTTPException(status_code=404, detail="Archivo no encontrado")
 
     if not os.path.exists(db_file.filepath):
-        raise HTTPException(status_code=404, detail="Archivo no encontrado en disco")
+        # Attempt to recover from extracted_text (applies to uploaded text files)
+        if db_file.extracted_text and db_file.filepath:
+            os.makedirs(os.path.dirname(db_file.filepath), exist_ok=True)
+            with open(db_file.filepath, "w", encoding="utf-8") as wf:
+                wf.write(db_file.extracted_text)
+        if not os.path.exists(db_file.filepath):
+            raise HTTPException(status_code=404, detail="Archivo no encontrado en disco")
 
     # Images inline, documents as download
     if db_file.file_type == "image":
