@@ -3,7 +3,7 @@
 > **Objetivo:** Aplicación web mobile-first de asistente personal (secretaria) con chat continuo, gestión documental, generación de documentos y reenvío por Telegram
 > **Carpeta:** D:\MINIMAX\Secretaria
 > **Ultima actualizacion:** 2026-02-07
-> **Estado global:** Fase 7 completada + Filtro backend de bloques think
+> **Estado global:** Fase 7 completada + Soporte TXT en generacion de documentos
 
 ---
 
@@ -11,7 +11,7 @@
 
 Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases de desarrollo. El cerebro es MINIMAX AI (chat) + Perplexity (búsqueda externa). La interfaz es un chat oscuro tipo WhatsApp optimizado para teléfono (PWA). Backend en Python/FastAPI, SQLite como BD, Docker para contenedores, Coolify para despliegue final desde GitHub.
 
-**ESTADO:** Aplicacion funcionando correctamente en produccion. Filtro backend de bloques `<think>` en streaming y en guardado/generacion DOCX. Documentos auto-regenerables si se pierden del disco tras redeploy.
+**ESTADO:** Aplicacion funcionando correctamente en produccion. Generacion de documentos soporta DOCX y TXT (selector de formato en UI). Filtro backend de bloques `<think>` en streaming y en guardado/generacion. Documentos auto-regenerables si se pierden del disco tras redeploy.
 
 ---
 
@@ -37,6 +37,7 @@ Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases 
 | Tipos soportados | PDF, DOCX, XLSX, TXT (documentos) + JPG, JPEG, PNG, WEBP (imagenes) | 2026-02-06 |
 | Extraccion texto | pypdf (PDF), python-docx (DOCX), openpyxl (XLSX), plain read (TXT) | 2026-02-06 |
 | Generacion docs | Toggle modo documento, DOCX via python-docx post-stream, evento SSE [FILE:{json}] | 2026-02-06 |
+| Formato docs | Selector DOCX/TXT al activar modo documento; TXT guarda texto plano, DOCX con formato | 2026-02-07 |
 | Modos exclusivos | searchMode y docMode mutuamente excluyentes (activar uno desactiva el otro) | 2026-02-06 |
 
 ---
@@ -585,6 +586,46 @@ Dos capas de filtrado en backend:
 
 ---
 
+## Feature: Soporte formato TXT en generacion de documentos
+
+> **Estado:** [x] Completada
+> **Prioridad:** Media
+
+### Problema
+La generacion de documentos solo producia archivos DOCX. El usuario quiere poder elegir entre DOCX y TXT al generar un documento.
+
+### Solucion
+Selector de formato en el frontend que aparece al activar modo documento. El backend bifurca la generacion segun el formato elegido.
+
+**Backend (3 archivos):**
+1. `doc_generator.py` — Nueva funcion `generate_txt(content, title, save_dir)` que escribe texto plano en `doc_YYYYMMDD_HHMMSS.txt`
+2. `chat.py` — Campo `doc_format` en MessageCreate (default "docx"), validacion (solo "docx"/"txt"), bifurcacion: TXT → `generate_txt()` + mime `text/plain`, DOCX → `generate_docx()` + mime DOCX
+3. `documents.py` — Auto-regeneracion detecta formato por extension del filename (`.txt` → `generate_txt`), FileResponse usa `f.mime_type` de la BD en vez de hardcodear DOCX
+
+**Frontend (3 archivos):**
+4. `index.html` — `<select id="doc-format-select">` con opciones DOCX/TXT, hidden por defecto
+5. `style.css` — Estilos `.doc-format-select` (pill compacto, borde purpura, texto `#c3b8ff`)
+6. `app.js` — Ref `docFormatSelect`, show/hide con docMode toggle, ocultar con searchMode, enviar `doc_format` en body POST, deteccion de `.txt` en renderMessage para doc cards, label dinamico (ext del filename en vez de "DOCX" hardcodeado)
+
+### Verificacion
+- [ ] Activar modo documento → aparece selector DOCX/TXT junto al boton
+- [ ] Generar documento en formato DOCX → funciona igual que antes
+- [ ] Generar documento en formato TXT → crea `.txt`, tarjeta muestra "TXT"
+- [ ] Descargar ambos formatos → descarga correcta con mime type correcto
+- [ ] Activar modo busqueda → selector se oculta
+- [ ] Desactivar modo documento → selector se oculta
+- [ ] Recargar pagina → historial muestra tarjetas TXT y DOCX correctamente
+
+### Archivos modificados
+- `backend/services/doc_generator.py` — Nueva funcion `generate_txt()`
+- `backend/routers/chat.py` — `doc_format` en MessageCreate, import `generate_txt`, bifurcacion generacion por formato, mime dinamico
+- `backend/routers/documents.py` — Import `generate_txt`, auto-regeneracion por extension, `f.mime_type` en FileResponse
+- `frontend/index.html` — Select `#doc-format-select` con opciones DOCX/TXT
+- `frontend/css/style.css` — Estilos `.doc-format-select`
+- `frontend/js/app.js` — Ref docFormatSelect, show/hide logica, doc_format en body, deteccion `.txt` en renderMessage, label dinamico en createDocCard
+
+---
+
 ## Notas de proceso
 
 > **IMPORTANTE:** Este documento DEBE actualizarse al final de cada fase completada. Incluir: tareas realizadas, archivos creados/modificados, verificaciones y siguiente paso.
@@ -614,3 +655,4 @@ Dos capas de filtrado en backend:
 | 17 | 2026-02-07 | Fix docs perdidos | Documentos generados perdidos tras redeploy Coolify. Fix: auto-regeneracion DOCX desde contenido del mensaje en BD cuando archivo falta del disco | Verificar en produccion |
 | 18 | 2026-02-07 | File-only upload | Upload de archivo sin texto ahora confirma recepcion y espera instrucciones en vez de auto-analizar. Historial enriquecido con archivos previos para que la IA tenga contexto en follow-ups | Verificar en produccion tras redeploy |
 | 19 | 2026-02-07 | Filtro think backend | Filtro de bloques `<think>` en backend: streaming filter stateful en minimax_ai.py (maneja tags partidos entre chunks) + regex safety net en chat.py antes de guardar en BD y generar DOCX | Verificar en produccion |
+| 20 | 2026-02-07 | Formato TXT docs | Soporte TXT en generacion de documentos: generate_txt() en backend, selector DOCX/TXT en frontend, bifurcacion por formato, auto-regeneracion por extension, mime dinamico, label dinamico en cards | Verificar en produccion |
