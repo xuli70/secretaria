@@ -31,6 +31,32 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 MAX_HISTORY = 50  # max messages sent to the AI
 
 
+# --- Temporary debug endpoint for Google intent detection ---
+@router.post("/debug-intent")
+async def debug_intent(
+    body: dict,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    content = body.get("message", "")
+    kw_match = has_google_keywords(content)
+    creds = get_valid_credentials(db, user.id)
+    intent = None
+    action_result = None
+    if kw_match and creds:
+        intent = await detect_intent(content)
+        if intent:
+            action_result = execute_action(intent, creds)
+    return {
+        "message": content,
+        "keyword_match": kw_match,
+        "has_creds": creds is not None,
+        "intent": intent,
+        "action_result_type": action_result.get("type") if action_result else None,
+        "action_result_preview": str(action_result)[:500] if action_result else None,
+    }
+
+
 # --- Schemas ---
 
 class ConversationOut(BaseModel):
