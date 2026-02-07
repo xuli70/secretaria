@@ -3,7 +3,7 @@
 > **Objetivo:** Aplicación web mobile-first de asistente personal (secretaria) con chat continuo, gestión documental, generación de documentos y reenvío por Telegram
 > **Carpeta:** D:\MINIMAX\Secretaria
 > **Ultima actualizacion:** 2026-02-07
-> **Estado global:** Fase 7 completada + Soporte TXT en generacion de documentos
+> **Estado global:** Fase 7 completada + Explorador de archivos en sidebar
 
 ---
 
@@ -11,7 +11,7 @@
 
 Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases de desarrollo. El cerebro es MINIMAX AI (chat) + Perplexity (búsqueda externa). La interfaz es un chat oscuro tipo WhatsApp optimizado para teléfono (PWA). Backend en Python/FastAPI, SQLite como BD, Docker para contenedores, Coolify para despliegue final desde GitHub.
 
-**ESTADO:** Aplicacion funcionando correctamente en produccion. Generacion de documentos soporta DOCX y TXT (selector de formato en UI). Filtro backend de bloques `<think>` en streaming y en guardado/generacion. Documentos auto-regenerables si se pierden del disco tras redeploy.
+**ESTADO:** Aplicacion funcionando correctamente en produccion. Explorador de archivos en sidebar con tabs (Conversaciones/Archivos) y arbol colapsable por tipo. Generacion de documentos soporta DOCX y TXT. Filtro backend de bloques `<think>` en streaming y en guardado/generacion. Documentos auto-regenerables si se pierden del disco tras redeploy.
 
 ---
 
@@ -626,6 +626,47 @@ Selector de formato en el frontend que aparece al activar modo documento. El bac
 
 ---
 
+## Feature: Explorador de archivos en sidebar
+
+> **Estado:** [x] Completada
+> **Prioridad:** Media
+
+### Problema
+Los archivos (subidos y generados) solo eran visibles inline dentro de los mensajes del chat. No existia una vista global para explorar todos los archivos del usuario organizados por tipo.
+
+### Solucion
+Tabs en el sidebar existente (Conversaciones / Archivos) con un explorador de archivos en arbol colapsable por tipo.
+
+**Backend (2 archivos):**
+1. `routers/files.py` — CREADO: Endpoint `GET /api/files` que retorna todos los archivos del usuario (across all conversations) con schema `FileExplorerItem` incluyendo campo `is_generated` calculado server-side (`"/generados/" in filepath`)
+2. `main.py` — Registrado `files_router` antes del static mount
+
+**Frontend (3 archivos):**
+3. `index.html` — Sidebar con tabs (Conversaciones/Archivos), contenedor `#file-explorer` con 3 grupos colapsables (Documentos, Imagenes, Generados), estado vacio
+4. `style.css` — Estilos para tabs (`.sidebar-tabs`, `.sidebar-tab.active` con borde accent), arbol colapsable (`.file-group`, chevron rotable, `.expanded`), items de archivo (icono teal para uploads, purple para generados), ocultar boton "+" en tab Archivos
+5. `app.js` — Estado `activeTab`/`explorerFiles`, tab switching con toggle hidden, `loadExplorerFiles()` fetch + render, clasificacion en 3 grupos, URLs de descarga correctas (generados → `/api/documents/{id}`, uploads → `/api/upload/files/{id}`), event delegation para colapsar/expandir, integracion en `enterApp()`, reset en logout, refresh post-stream
+
+### Verificacion
+- [ ] Sidebar muestra tabs "Conversaciones" / "Archivos"
+- [ ] Tab "Conversaciones" funciona igual que antes (sin regresion)
+- [ ] Tab "Archivos" carga y muestra arbol con 3 categorias
+- [ ] Subir un archivo → aparece en la categoria correcta
+- [ ] Generar un documento → aparece en "Generados"
+- [ ] Click en archivo → se descarga/abre correctamente
+- [ ] Grupos colapsables funcionan (click en header)
+- [ ] Grupos vacios se ocultan
+- [ ] Mobile: sidebar slide-out funciona con ambos tabs
+- [ ] Boton "+" se oculta en tab Archivos
+
+### Archivos creados/modificados
+- `backend/routers/files.py` — CREADO: GET /api/files con FileExplorerItem schema (id, filename, file_type, mime_type, size_bytes, created_at, is_generated)
+- `backend/main.py` — Registrado files_router
+- `frontend/index.html` — Sidebar tabs + file explorer con 3 grupos colapsables
+- `frontend/css/style.css` — Estilos sidebar-tabs, file-explorer, file-group, file-explorer-item, file-explorer-empty
+- `frontend/js/app.js` — Tab switching, loadExplorerFiles, renderFileExplorer, collapse/expand, lifecycle integration
+
+---
+
 ## Notas de proceso
 
 > **IMPORTANTE:** Este documento DEBE actualizarse al final de cada fase completada. Incluir: tareas realizadas, archivos creados/modificados, verificaciones y siguiente paso.
@@ -656,3 +697,4 @@ Selector de formato en el frontend que aparece al activar modo documento. El bac
 | 18 | 2026-02-07 | File-only upload | Upload de archivo sin texto ahora confirma recepcion y espera instrucciones en vez de auto-analizar. Historial enriquecido con archivos previos para que la IA tenga contexto en follow-ups | Verificar en produccion tras redeploy |
 | 19 | 2026-02-07 | Filtro think backend | Filtro de bloques `<think>` en backend: streaming filter stateful en minimax_ai.py (maneja tags partidos entre chunks) + regex safety net en chat.py antes de guardar en BD y generar DOCX | Verificar en produccion |
 | 20 | 2026-02-07 | Formato TXT docs | Soporte TXT en generacion de documentos: generate_txt() en backend, selector DOCX/TXT en frontend, bifurcacion por formato, auto-regeneracion por extension, mime dinamico, label dinamico en cards | Verificar en produccion |
+| 21 | 2026-02-07 | File explorer | Explorador de archivos en sidebar: tabs Conversaciones/Archivos, endpoint GET /api/files, arbol colapsable por tipo (Documentos/Imagenes/Generados), iconos por tipo, descarga directa, lifecycle integration | Verificar en produccion |
