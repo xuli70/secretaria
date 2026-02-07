@@ -32,6 +32,11 @@ from backend.services.google_drive import (
     download_file as drive_download_file,
     upload_file as drive_upload_file,
 )
+from backend.services.google_contacts import (
+    list_contacts as contacts_list,
+    get_contact as contacts_get,
+    search_contacts as contacts_search,
+)
 
 router = APIRouter(prefix="/api/google", tags=["google"])
 
@@ -364,3 +369,38 @@ async def drive_file_upload(
         folder_id=folder or None,
     )
     return result
+
+
+# ── Contacts endpoints ────────────────────────────────────────────
+
+
+@router.get("/contacts")
+def google_contacts(
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+    q: str = "",
+    max: int = 50,
+):
+    creds = _require_google(db, user.id)
+    return contacts_list(creds, query=q, max_results=max)
+
+
+@router.get("/contacts/search")
+def google_contacts_search(
+    q: str,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+    max: int = 20,
+):
+    creds = _require_google(db, user.id)
+    return contacts_search(creds, query=q, max_results=max)
+
+
+@router.get("/contacts/{contact_id:path}")
+def google_contact_detail(
+    contact_id: str,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    creds = _require_google(db, user.id)
+    return contacts_get(creds, contact_id)

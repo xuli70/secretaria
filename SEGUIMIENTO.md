@@ -3,7 +3,7 @@
 > **Objetivo:** Aplicación web mobile-first de asistente personal (secretaria) con chat continuo, gestión documental, generación de documentos y reenvío por Telegram
 > **Carpeta:** D:\MINIMAX\Secretaria
 > **Ultima actualizacion:** 2026-02-07
-> **Estado global:** Fase 9+10+11+12+13 completadas — Google OAuth 2.0 + Calendar + Gmail + Drive integrado
+> **Estado global:** Fase 9+10+11+12+13+14 completadas — Google OAuth 2.0 + Calendar + Gmail + Drive + Contacts integrado
 
 ---
 
@@ -11,7 +11,7 @@
 
 Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases de desarrollo. El cerebro es MINIMAX AI (chat) + Perplexity (búsqueda externa). La interfaz es un chat oscuro tipo WhatsApp optimizado para teléfono (PWA). Backend en Python/FastAPI, SQLite como BD, Docker para contenedores, Coolify para despliegue final desde GitHub.
 
-**ESTADO:** Aplicacion funcionando correctamente en produccion. Google OAuth 2.0 integrado con Google Calendar, Gmail y Drive. Calendar: lectura de eventos (hoy/semana), creacion y eliminacion. Gmail: inbox, no leidos, detalle de mensaje, envio de correo, badge de no leidos. Drive: archivos recientes, busqueda, descarga (con export de Google Docs), subida de archivos. UI en modal Google con secciones Calendar, Gmail y Drive. Explorador de archivos en sidebar con tabs y arbol colapsable. Archivos recuperables tras redeploy. Generacion de documentos DOCX/TXT. Filtro backend de bloques `<think>`.
+**ESTADO:** Aplicacion funcionando correctamente en produccion. Google OAuth 2.0 integrado con Google Calendar, Gmail, Drive y Contacts. Calendar: lectura de eventos (hoy/semana), creacion y eliminacion. Gmail: inbox, no leidos, detalle de mensaje, envio de correo, badge de no leidos. Drive: archivos recientes, busqueda, descarga (con export de Google Docs), subida de archivos. UI en modal Google con secciones Calendar, Gmail y Drive. Explorador de archivos en sidebar con tabs y arbol colapsable. Archivos recuperables tras redeploy. Generacion de documentos DOCX/TXT. Filtro backend de bloques `<think>`.
 
 ---
 
@@ -939,6 +939,38 @@ Clasificacion de archivos en 3 estados: disponible, recuperable, perdido.
 
 ---
 
+## Fase 14: Google Contacts — Lectura y autocompletar
+
+> **Estado:** [x] Completada
+> **Prioridad:** Baja
+
+### Tareas
+- [x] Crear `backend/services/google_contacts.py` con People API:
+  - `list_contacts(creds, query, max_results)` — listar contactos (connections.list)
+  - `search_contacts(creds, query, max_results)` — buscar contactos (people.searchContacts)
+  - `get_contact(creds, resource_name)` — detalle de contacto
+- [x] Agregar 3 endpoints Contacts en `backend/routers/google.py`:
+  - `GET /api/google/contacts?q=&max=` — listar/buscar contactos
+  - `GET /api/google/contacts/search?q=&max=` — busqueda remota (People API searchContacts)
+  - `GET /api/google/contacts/{id}` — detalle (resource_name como path)
+- [x] Frontend: autocomplete en campo "Para" de Gmail Compose
+  - Pre-carga de contactos al conectar Google (cache local)
+  - Filtrado local por nombre/email durante escritura
+  - Busqueda remota como fallback (debounce 300ms, min 2 chars)
+  - Dropdown con avatar, nombre y email
+  - Navegacion por teclado (arrows + Enter + Escape)
+  - Click en contacto → rellena email en input
+- [x] Reset de cache en disconnect y logout
+
+### Archivos creados/modificados
+- `backend/services/google_contacts.py` — CREADO: _get_service, list_contacts, search_contacts, get_contact, _has_email, _format_contact
+- `backend/routers/google.py` — Imports google_contacts, 3 endpoints Contacts
+- `frontend/index.html` — Wrapper contact-autocomplete-wrapper en gmail-to, dropdown container
+- `frontend/css/style.css` — Estilos contact-autocomplete, contact-ac-item, contact-ac-avatar, contact-ac-info
+- `frontend/js/app.js` — contactsCache, loadContactsCache, filterContacts, searchContactsRemote, renderACResults, setupContactAutocomplete, keyboard nav, reset en disconnect/logout, pre-carga en updateGoogleUI
+
+---
+
 ## Notas de proceso
 
 > **IMPORTANTE:** Este documento DEBE actualizarse al final de cada fase completada. Incluir: tareas realizadas, archivos creados/modificados, verificaciones y siguiente paso.
@@ -977,3 +1009,4 @@ Clasificacion de archivos en 3 estados: disponible, recuperable, perdido.
 | 26 | 2026-02-07 | Fase 11 Google Calendar | google_calendar.py service (list/get/create/delete events), 5 endpoints en google router, UI Calendar en modal (tabs hoy/semana, event cards, create form) | Build Docker + verificar Calendar |
 | 27 | 2026-02-07 | Fase 12 Gmail | google_gmail.py service (list_messages, get_message, send_message), 4 endpoints Gmail en google router, UI Gmail en modal (tabs inbox/no leidos, email cards, compose form, detail view, badge no leidos) | Build Docker + verificar Gmail |
 | 28 | 2026-02-07 | Fase 13 Google Drive | google_drive.py service (list_files, list_recent, get_file, download_file, upload_file, list_folders), 5 endpoints Drive en google router, UI Drive en modal (tabs recientes/buscar, file cards con iconos por tipo, search bar, upload form, descargar/abrir) | Build Docker + verificar Drive |
+| 29 | 2026-02-07 | Fase 14 Contacts | google_contacts.py service (People API: list, search, get), 3 endpoints Contacts en google router, autocomplete en Gmail compose (cache local + busqueda remota, dropdown con avatar/nombre/email, keyboard nav) | Build Docker + verificar Contacts |

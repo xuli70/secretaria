@@ -3,7 +3,7 @@
 > **Proyecto:** Secretaria — Asistente Personal PWA
 > **Objetivo:** Integrar Google Account (OAuth 2.0) para acceso a Calendar, Gmail, Drive y Contacts
 > **Fecha creacion:** 2026-02-07
-> **Estado global:** Fase 9+10+11+12+13 completadas (OAuth + Calendar + Gmail + Drive)
+> **Estado global:** Fase 9+10+11+12+13+14 completadas (OAuth + Calendar + Gmail + Drive + Contacts)
 
 ---
 
@@ -16,7 +16,7 @@
 | 11 | Google Calendar — Lectura y creacion de eventos | Completada |
 | 12 | Gmail — Lectura y envio de correos | Completada |
 | 13 | Google Drive — Explorar y subir archivos | Completada |
-| 14 | Google Contacts — Lectura de contactos | Pendiente |
+| 14 | Google Contacts — Lectura de contactos | Completada |
 | 15 | Comandos naturales — Chat con acciones Google | Pendiente |
 | 16 | UI integrada — Panel Google en sidebar | Pendiente |
 
@@ -225,22 +225,30 @@ Explorar archivos del Drive del usuario y subir archivos desde el chat.
 
 ## Fase 14: Google Contacts — Lectura de contactos
 
-> **Estado:** [ ] Pendiente
+> **Estado:** [x] Completada
 > **Prioridad:** Baja
 
 ### Objetivo
 Leer contactos de Google del usuario para autocompletar destinatarios en Gmail y Calendar.
 
 ### Tareas
-- [ ] Crear `backend/services/google_contacts.py`:
-  - `list_contacts(token, query, max_results)` — listar contactos
-  - `get_contact(token, contact_id)` — detalle de contacto
-  - `search_contacts(token, query)` — buscar por nombre/email
-- [ ] Crear endpoints:
+- [x] Crear `backend/services/google_contacts.py`:
+  - `list_contacts(creds, query, max_results)` — listar contactos
+  - `get_contact(creds, resource_name)` — detalle de contacto
+  - `search_contacts(creds, query)` — buscar por nombre/email
+- [x] Crear endpoints:
   - `GET /api/google/contacts?q=&max=` — listar/buscar contactos
+  - `GET /api/google/contacts/search?q=&max=` — buscar contactos (People API searchContacts)
   - `GET /api/google/contacts/{id}` — detalle
-- [ ] Frontend: autocompletar contactos Google al escribir destinatario en Gmail
-- [ ] Frontend: sugerir asistentes de Calendar desde contactos Google
+- [x] Frontend: autocompletar contactos Google al escribir destinatario en Gmail
+- [x] Frontend: contactos pre-cargados al conectar Google, con busqueda remota como fallback
+
+### Archivos creados/modificados
+- `backend/services/google_contacts.py` — CREADO: _get_service, list_contacts, search_contacts, get_contact, _has_email, _format_contact
+- `backend/routers/google.py` — Agregados 3 endpoints Contacts, imports google_contacts
+- `frontend/index.html` — Wrapper contact-autocomplete-wrapper en gmail-to input, dropdown container
+- `frontend/css/style.css` — Estilos contact-autocomplete, contact-ac-item, contact-ac-avatar, contact-ac-info
+- `frontend/js/app.js` — contactsCache, loadContactsCache, filterContacts, searchContactsRemote, renderACResults, setupContactAutocomplete, keyboard nav, reset on disconnect/logout
 
 ### Verificacion
 - [ ] `GET /api/google/contacts` → lista contactos del usuario

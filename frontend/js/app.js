@@ -694,6 +694,7 @@ function updateGoogleUI(data) {
         loadCalendarEvents();
         loadGmailMessages();
         loadDriveFiles();
+        loadContactsCache();
     } else {
         googleDisconnected.hidden = false;
         googleConnectedSection.hidden = true;
@@ -714,6 +715,8 @@ btnGoogleDisconnect.addEventListener('click', async () => {
     try {
         await apiPost('/api/google/disconnect', {});
         googleConnected = false;
+        contactsCache = [];
+        contactsCacheLoaded = false;
         updateGoogleUI({ connected: false, scopes: [] });
         showToast('Google desconectado');
     } catch (err) {
@@ -1196,6 +1199,136 @@ function formatDriveDate(isoStr) {
     }
 }
 
+// --- Google Contacts Autocomplete ---
+
+let contactsCache = [];
+let contactsCacheLoaded = false;
+let acFocusIndex = -1;
+const gmailToInput = $('#gmail-to');
+const gmailToAC = $('#gmail-to-autocomplete');
+let acDebounceTimer = null;
+
+async function loadContactsCache() {
+    if (contactsCacheLoaded || !googleConnected) return;
+    try {
+        contactsCache = await apiGet('/api/google/contacts?max=200');
+        contactsCacheLoaded = true;
+    } catch {
+        contactsCache = [];
+    }
+}
+
+function filterContacts(query) {
+    if (!query) return contactsCache.slice(0, 8);
+    const q = query.toLowerCase();
+    return contactsCache
+        .filter(c => c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q))
+        .slice(0, 8);
+}
+
+async function searchContactsRemote(query) {
+    if (!googleConnected || !query || query.length < 2) return [];
+    try {
+        return await apiGet('/api/google/contacts/search?q=' + encodeURIComponent(query) + '&max=8');
+    } catch {
+        return [];
+    }
+}
+
+function renderACResults(results, container, onSelect) {
+    container.innerHTML = '';
+    if (results.length === 0) {
+        container.classList.remove('visible');
+        return;
+    }
+    acFocusIndex = -1;
+    results.forEach((c, i) => {
+        const item = document.createElement('div');
+        item.className = 'contact-ac-item';
+        item.dataset.index = i;
+        const initial = (c.name || c.email || '?')[0].toUpperCase();
+        const avatarContent = c.photo
+            ? `<img src="${escapeHtml(c.photo)}" referrerpolicy="no-referrer">`
+            : escapeHtml(initial);
+        item.innerHTML = `
+            <div class="contact-ac-avatar">${avatarContent}</div>
+            <div class="contact-ac-info">
+                <div class="contact-ac-name">${escapeHtml(c.name || c.email)}</div>
+                <div class="contact-ac-email">${escapeHtml(c.email)}</div>
+            </div>
+        `;
+        item.addEventListener('click', () => {
+            onSelect(c);
+            container.classList.remove('visible');
+        });
+        container.appendChild(item);
+    });
+    container.classList.add('visible');
+}
+
+function setupContactAutocomplete(inputEl, containerEl, onSelect) {
+    inputEl.addEventListener('input', () => {
+        clearTimeout(acDebounceTimer);
+        const val = inputEl.value.trim();
+        // Try local first
+        const local = filterContacts(val);
+        if (local.length > 0 || !val) {
+            renderACResults(local, containerEl, onSelect);
+        }
+        // If typing, also try remote after debounce
+        if (val.length >= 2) {
+            acDebounceTimer = setTimeout(async () => {
+                const remote = await searchContactsRemote(val);
+                if (remote.length > 0 && inputEl.value.trim() === val) {
+                    renderACResults(remote, containerEl, onSelect);
+                }
+            }, 300);
+        }
+    });
+
+    inputEl.addEventListener('focus', () => {
+        if (googleConnected) {
+            loadContactsCache();
+            const val = inputEl.value.trim();
+            const results = filterContacts(val);
+            if (results.length > 0) {
+                renderACResults(results, containerEl, onSelect);
+            }
+        }
+    });
+
+    inputEl.addEventListener('keydown', (e) => {
+        const items = containerEl.querySelectorAll('.contact-ac-item');
+        if (!containerEl.classList.contains('visible') || items.length === 0) return;
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            acFocusIndex = Math.min(acFocusIndex + 1, items.length - 1);
+            items.forEach((it, i) => it.classList.toggle('focused', i === acFocusIndex));
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            acFocusIndex = Math.max(acFocusIndex - 1, 0);
+            items.forEach((it, i) => it.classList.toggle('focused', i === acFocusIndex));
+        } else if (e.key === 'Enter' && acFocusIndex >= 0) {
+            e.preventDefault();
+            items[acFocusIndex].click();
+        } else if (e.key === 'Escape') {
+            containerEl.classList.remove('visible');
+        }
+    });
+
+    // Close on outside click
+    document.addEventListener('click', (e) => {
+        if (!containerEl.contains(e.target) && e.target !== inputEl) {
+            containerEl.classList.remove('visible');
+        }
+    });
+}
+
+// Init Gmail To autocomplete
+setupContactAutocomplete(gmailToInput, gmailToAC, (contact) => {
+    gmailToInput.value = contact.email;
+});
+
 // --- Selection Mode ---
 
 function enterSelectionMode(initialBubble) {
@@ -1640,6 +1773,8 @@ $('#btn-logout').addEventListener('click', () => {
     telegramContacts = [];
     explorerFiles = [];
     googleConnected = false;
+    contactsCache = [];
+    contactsCacheLoaded = false;
     activeTab = 'conversations';
     clearPendingFile();
     closeTelegramModal();

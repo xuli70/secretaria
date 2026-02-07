@@ -232,7 +232,10 @@
                 <!-- Gmail Compose Form -->
                 <div id="gmail-compose" class="gmail-compose" hidden>
                     <div class="gmail-compose-title">Nuevo correo</div>
-                    <input type="email" id="gmail-to" class="gmail-input" placeholder="Para (email)" required>
+                    <div class="contact-autocomplete-wrapper">
+                        <input type="email" id="gmail-to" class="gmail-input" placeholder="Para (email)" required autocomplete="off">
+                        <div id="gmail-to-autocomplete" class="contact-autocomplete"></div>
+                    </div>
                     <input type="text" id="gmail-subject" class="gmail-input" placeholder="Asunto">
                     <textarea id="gmail-body" class="gmail-input gmail-textarea" placeholder="Mensaje..." rows="4"></textarea>
                     <div class="gmail-compose-actions">
