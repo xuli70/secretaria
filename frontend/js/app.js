@@ -42,6 +42,11 @@ function authHeaders() {
     return h;
 }
 
+function authUrl(url) {
+    const t = getToken();
+    return t ? url + '?token=' + encodeURIComponent(t) : url;
+}
+
 async function apiPost(path, body) {
     const res = await fetch(API + path, {
         method: 'POST',
@@ -681,18 +686,18 @@ function renderMessage(role, content, timestamp, files, messageId) {
             } else if (f.file_type === 'image') {
                 const img = document.createElement('img');
                 img.className = 'msg-file-image';
-                img.src = API + `/api/upload/files/${f.id}`;
+                img.src = authUrl(API + `/api/upload/files/${f.id}`);
                 img.alt = f.filename;
                 img.loading = 'lazy';
                 img.addEventListener('click', () => {
                     if (selectionMode) return;
-                    window.open(API + `/api/upload/files/${f.id}`, '_blank');
+                    window.open(authUrl(API + `/api/upload/files/${f.id}`), '_blank');
                 });
                 bubble.appendChild(img);
             } else {
                 const fileEl = document.createElement('a');
                 fileEl.className = 'msg-file';
-                fileEl.href = API + `/api/upload/files/${f.id}`;
+                fileEl.href = authUrl(API + `/api/upload/files/${f.id}`);
                 fileEl.target = '_blank';
                 fileEl.rel = 'noopener';
                 fileEl.addEventListener('click', (e) => {
@@ -738,7 +743,7 @@ function renderMessage(role, content, timestamp, files, messageId) {
 function createDocCard(fileInfo) {
     const card = document.createElement('a');
     card.className = 'msg-generated-doc';
-    card.href = API + `/api/documents/${fileInfo.id}`;
+    card.href = authUrl(API + `/api/documents/${fileInfo.id}`);
     card.target = '_blank';
     card.rel = 'noopener';
     card.innerHTML = `
