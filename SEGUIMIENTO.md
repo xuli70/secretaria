@@ -3,7 +3,7 @@
 > **Objetivo:** Aplicación web mobile-first de asistente personal (secretaria) con chat continuo, gestión documental, generación de documentos y reenvío por Telegram
 > **Carpeta:** D:\MINIMAX\Secretaria
 > **Ultima actualizacion:** 2026-02-07
-> **Estado global:** Fase 7 completada + Hotfix SSE newlines — Respuestas AI visibles
+> **Estado global:** Fase 7 completada + Fix auth en descargas de archivos
 
 ---
 
@@ -11,7 +11,7 @@
 
 Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases de desarrollo. El cerebro es MINIMAX AI (chat) + Perplexity (búsqueda externa). La interfaz es un chat oscuro tipo WhatsApp optimizado para teléfono (PWA). Backend en Python/FastAPI, SQLite como BD, Docker para contenedores, Coolify para despliegue final desde GitHub.
 
-**ESTADO:** Aplicacion funcionando correctamente en produccion. Fix SSE newlines aplicado — respuestas AI visibles de nuevo.
+**ESTADO:** Aplicacion funcionando correctamente en produccion. Fix auth en descargas — archivos y documentos accesibles desde browser.
 
 ---
 
@@ -470,6 +470,38 @@ Tras el hotfix de `<think>` tags, las respuestas de la IA no se mostraban en el 
 
 ---
 
+## Fix: Descargas de archivos devuelven "Not Authenticated"
+
+> **Estado:** [x] Completada
+> **Prioridad:** Alta
+
+### Problema
+Todos los endpoints de servir archivos (`/api/documents/{id}`, `/api/upload/files/{id}`) requieren JWT via header `Authorization: Bearer`. Pero el frontend usa elementos HTML directos (`<a href>`, `<img src>`, `window.open`) que no incluyen headers custom — los browsers nunca envian Authorization en navegacion/recursos. Resultado: `{"detail":"Not authenticated"}` al descargar documentos DOCX e imagenes rotas.
+
+### Causa raiz
+- `backend/auth.py`: `security = HTTPBearer()` — solo acepta header Authorization
+- `frontend/js/app.js`: URLs directas sin token en `img.src`, `window.open`, `fileEl.href`, `card.href`
+
+### Solucion
+- [x] Backend: `HTTPBearer(auto_error=False)` para no rechazar automaticamente sin header
+- [x] Backend: `get_current_user` acepta `Request`, lee token de header Bearer (existente) o `?token=` query param (fallback)
+- [x] Frontend: helper `authUrl(url)` que agrega `?token=<jwt>` a URLs
+- [x] Frontend: actualizar 4 ubicaciones (img.src, window.open, fileEl.href, card.href) para usar `authUrl()`
+- [x] Push a GitHub → deploy automatico en Coolify
+
+### Verificacion
+- [ ] Descargar documento DOCX generado → descarga correcta (sin "Not authenticated")
+- [ ] Imagenes subidas se muestran inline correctamente
+- [ ] Click en imagen → abre en nueva pestana
+- [ ] Click en archivo adjunto → descarga correcta
+- [ ] API calls con Bearer header siguen funcionando (chat, upload, etc.)
+
+### Archivos modificados
+- `backend/auth.py` — Import Request, HTTPBearer(auto_error=False), get_current_user con fallback a query param ?token=
+- `frontend/js/app.js` — Helper authUrl(), actualizar img.src, window.open, fileEl.href, card.href
+
+---
+
 ## Notas de proceso
 
 > **IMPORTANTE:** Este documento DEBE actualizarse al final de cada fase completada. Incluir: tareas realizadas, archivos creados/modificados, verificaciones y siguiente paso.
@@ -495,3 +527,4 @@ Tras el hotfix de `<think>` tags, las respuestas de la IA no se mostraban en el 
 | 13 | 2026-02-07 | Test produccion | Test API completo contra https://secretaria.axcsol.com: health, login, bot-status, contacts, send-bulk OK. Envio bulk (msgs 21+22) a SebastianXL exitoso. Contacto XULITA con errores (chat_id pendiente de verificar) | Verificar UI manual (long-press, selection mode) |
 | 14 | 2026-02-07 | Hotfix think tags | Fix etiquetas `<think>` visibles durante streaming en modo documento. Regex solo eliminaba bloques completos; agregada segunda regex para bloques incompletos. Deploy verificado en produccion, descarga DOCX OK | Fix SSE newlines |
 | 15 | 2026-02-07 | Fix SSE newlines | Respuestas AI no visibles por newlines en chunks SSE. Modelo emite `<think>` con saltos de linea que rompen formato SSE. Fix: escapar `\n` → `\\n` en backend, decodificar en frontend | Verificar en produccion |
+| 16 | 2026-02-07 | Fix auth descargas | Descargas de archivos devolvian "Not authenticated" porque browser no envia Authorization header en <a href>/<img src>. Fix: fallback a ?token= query param en backend + authUrl() helper en frontend | Verificar en produccion |
