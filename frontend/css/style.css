@@ -1980,6 +1980,326 @@ body.selection-mode .msg-bubble[data-msg-id].selected::after {
     padding: 12px;
 }
 
+/* === Google Drive Section === */
+.gdrive-section {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-top: 4px;
+}
+
+.gdrive-header {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+}
+
+.gdrive-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.gdrive-tabs {
+    display: flex;
+    gap: 4px;
+    flex: 1;
+    justify-content: flex-end;
+}
+
+.gdrive-tab {
+    padding: 4px 10px;
+    border: none;
+    border-radius: 12px;
+    background: var(--bg-input);
+    color: var(--text-secondary);
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.gdrive-tab:hover {
+    color: var(--text-primary);
+}
+
+.gdrive-tab.active {
+    background: #34a853;
+    color: #fff;
+}
+
+.btn-gdrive-upload {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: #34a853;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s;
+}
+
+.btn-gdrive-upload:hover {
+    background: #43b463;
+}
+
+.gdrive-search-bar {
+    display: flex;
+    padding: 8px 12px;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+}
+
+.gdrive-search-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 8px;
+    background: var(--bg-input);
+    color: var(--text-primary);
+    font-size: 13px;
+    outline: none;
+    min-width: 0;
+}
+
+.gdrive-search-input::placeholder {
+    color: var(--text-secondary);
+}
+
+.gdrive-search-input:focus {
+    box-shadow: 0 0 0 2px rgba(52, 168, 83, 0.4);
+}
+
+.btn-gdrive-search {
+    padding: 6px 14px;
+    border: none;
+    border-radius: 8px;
+    background: #34a853;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s;
+}
+
+.btn-gdrive-search:hover {
+    background: #43b463;
+}
+
+.gdrive-files {
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.gdrive-loading,
+.gdrive-empty {
+    padding: 20px 12px;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.gdrive-file {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    cursor: pointer;
+    transition: background 0.15s;
+    text-decoration: none;
+    color: inherit;
+}
+
+.gdrive-file:last-child {
+    border-bottom: none;
+}
+
+.gdrive-file:hover {
+    background: rgba(255,255,255,0.04);
+}
+
+.gdrive-file-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 6px;
+    background: #34a853;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    flex-shrink: 0;
+}
+
+.gdrive-file-icon.folder {
+    background: #fbbc04;
+    color: #333;
+}
+
+.gdrive-file-icon.gdoc {
+    background: #4285f4;
+}
+
+.gdrive-file-icon.gsheet {
+    background: #34a853;
+}
+
+.gdrive-file-icon.gslides {
+    background: #fbbc04;
+    color: #333;
+}
+
+.gdrive-file-icon.pdf {
+    background: #ea4335;
+}
+
+.gdrive-file-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.gdrive-file-name {
+    font-size: 13px;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gdrive-file-meta {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+.gdrive-file-download {
+    color: var(--text-secondary);
+    flex-shrink: 0;
+    padding: 4px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    transition: color 0.15s;
+}
+
+.gdrive-file-download:hover {
+    color: var(--text-primary);
+}
+
+/* === Drive Upload Form === */
+.gdrive-upload-form {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    margin-top: 4px;
+}
+
+.gdrive-upload-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.btn-gdrive-pick {
+    padding: 10px;
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 13px;
+    cursor: pointer;
+    text-align: center;
+    transition: border-color 0.15s, color 0.15s;
+}
+
+.btn-gdrive-pick:hover {
+    border-color: #34a853;
+    color: var(--text-primary);
+}
+
+.gdrive-upload-preview {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--bg-input);
+    border-radius: 8px;
+    font-size: 13px;
+}
+
+.gdrive-upload-preview span:first-child {
+    flex: 1;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gdrive-upload-preview span:last-child {
+    color: var(--text-secondary);
+    font-size: 11px;
+    flex-shrink: 0;
+}
+
+.gdrive-upload-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.btn-gdrive-upload-cancel {
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 13px;
+    cursor: pointer;
+    transition: color 0.15s;
+}
+
+.btn-gdrive-upload-cancel:hover {
+    color: var(--text-primary);
+}
+
+.btn-gdrive-upload-send {
+    padding: 8px 20px;
+    border: none;
+    border-radius: 8px;
+    background: #34a853;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.btn-gdrive-upload-send:hover {
+    background: #43b463;
+}
+
+.btn-gdrive-upload-send:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 /* === Mobile (< 768px) === */
 @media (max-width: 768px) {
     .sidebar {

@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi.responses import RedirectResponse, Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -24,6 +24,13 @@ from backend.services.google_gmail import (
     list_messages,
     get_message,
     send_message,
+)
+from backend.services.google_drive import (
+    list_files as drive_list_files,
+    list_recent as drive_list_recent,
+    get_file as drive_get_file,
+    download_file as drive_download_file,
+    upload_file as drive_upload_file,
 )
 
 router = APIRouter(prefix="/api/google", tags=["google"])
@@ -287,3 +294,73 @@ def gmail_send_message(
         cc=data.cc,
         bcc=data.bcc,
     )
+
+
+# ── Drive endpoints ──────────────────────────────────────────────
+
+
+@router.get("/drive/files")
+def drive_files(
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+    q: str = "",
+    folder: str = "",
+    max: int = 30,
+):
+    creds = _require_google(db, user.id)
+    return drive_list_files(creds, query=q, folder_id=folder or None, max_results=max)
+
+
+@router.get("/drive/files/recent")
+def drive_files_recent(
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+    max: int = 20,
+):
+    creds = _require_google(db, user.id)
+    return drive_list_recent(creds, max_results=max)
+
+
+@router.get("/drive/files/{file_id}")
+def drive_file_meta(
+    file_id: str,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    creds = _require_google(db, user.id)
+    return drive_get_file(creds, file_id)
+
+
+@router.get("/drive/files/{file_id}/download")
+def drive_file_download(
+    file_id: str,
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    creds = _require_google(db, user.id)
+    content, filename, mime_type = drive_download_file(creds, file_id)
+    return Response(
+        content=content,
+        media_type=mime_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.post("/drive/upload")
+async def drive_file_upload(
+    file: UploadFile = File(...),
+    folder: str = "",
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    creds = _require_google(db, user.id)
+    content = await file.read()
+    mime = file.content_type or "application/octet-stream"
+    result = drive_upload_file(
+        creds,
+        filename=file.filename or "upload",
+        content=content,
+        mime_type=mime,
+        folder_id=folder or None,
+    )
+    return result

@@ -249,6 +249,42 @@
                     <div id="gmail-detail-body" class="gmail-detail-body"></div>
                 </div>
 
+                <!-- Drive Section -->
+                <div class="gdrive-section">
+                    <div class="gdrive-header">
+                        <span class="gdrive-title">Drive</span>
+                        <div class="gdrive-tabs">
+                            <button class="gdrive-tab active" data-drive-tab="recent">Recientes</button>
+                            <button class="gdrive-tab" data-drive-tab="search">Buscar</button>
+                        </div>
+                        <button id="btn-gdrive-upload" class="btn-gdrive-upload" title="Subir archivo">
+                            <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg>
+                        </button>
+                    </div>
+                    <div id="gdrive-search-bar" class="gdrive-search-bar" hidden>
+                        <input type="text" id="gdrive-search-input" class="gdrive-search-input" placeholder="Buscar en Drive...">
+                        <button id="btn-gdrive-search" class="btn-gdrive-search">Buscar</button>
+                    </div>
+                    <div id="gdrive-files" class="gdrive-files">
+                        <div class="gdrive-loading">Cargando...</div>
+                    </div>
+                </div>
+
+                <!-- Drive Upload Form -->
+                <div id="gdrive-upload-form" class="gdrive-upload-form" hidden>
+                    <div class="gdrive-upload-title">Subir a Drive</div>
+                    <input type="file" id="gdrive-file-input" hidden>
+                    <button id="btn-gdrive-pick" class="btn-gdrive-pick">Seleccionar archivo</button>
+                    <div id="gdrive-upload-preview" class="gdrive-upload-preview" hidden>
+                        <span id="gdrive-upload-name"></span>
+                        <span id="gdrive-upload-size"></span>
+                    </div>
+                    <div class="gdrive-upload-actions">
+                        <button id="btn-gdrive-upload-cancel" class="btn-gdrive-upload-cancel">Cancelar</button>
+                        <button id="btn-gdrive-upload-send" class="btn-gdrive-upload-send" disabled>Subir</button>
+                    </div>
+                </div>
+
                 <button id="btn-google-disconnect" class="btn-google-disconnect">Desconectar</button>
             </div>
         </div>

@@ -3,7 +3,7 @@
 > **Objetivo:** Aplicación web mobile-first de asistente personal (secretaria) con chat continuo, gestión documental, generación de documentos y reenvío por Telegram
 > **Carpeta:** D:\MINIMAX\Secretaria
 > **Ultima actualizacion:** 2026-02-07
-> **Estado global:** Fase 9+10+11+12 completadas — Google OAuth 2.0 + Calendar + Gmail integrado
+> **Estado global:** Fase 9+10+11+12+13 completadas — Google OAuth 2.0 + Calendar + Gmail + Drive integrado
 
 ---
 
@@ -11,7 +11,7 @@
 
 Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases de desarrollo. El cerebro es MINIMAX AI (chat) + Perplexity (búsqueda externa). La interfaz es un chat oscuro tipo WhatsApp optimizado para teléfono (PWA). Backend en Python/FastAPI, SQLite como BD, Docker para contenedores, Coolify para despliegue final desde GitHub.
 
-**ESTADO:** Aplicacion funcionando correctamente en produccion. Google OAuth 2.0 integrado con Google Calendar y Gmail. Calendar: lectura de eventos (hoy/semana), creacion y eliminacion. Gmail: inbox, no leidos, detalle de mensaje, envio de correo, badge de no leidos. UI en modal Google con secciones Calendar y Gmail. Explorador de archivos en sidebar con tabs y arbol colapsable. Archivos recuperables tras redeploy. Generacion de documentos DOCX/TXT. Filtro backend de bloques `<think>`.
+**ESTADO:** Aplicacion funcionando correctamente en produccion. Google OAuth 2.0 integrado con Google Calendar, Gmail y Drive. Calendar: lectura de eventos (hoy/semana), creacion y eliminacion. Gmail: inbox, no leidos, detalle de mensaje, envio de correo, badge de no leidos. Drive: archivos recientes, busqueda, descarga (con export de Google Docs), subida de archivos. UI en modal Google con secciones Calendar, Gmail y Drive. Explorador de archivos en sidebar con tabs y arbol colapsable. Archivos recuperables tras redeploy. Generacion de documentos DOCX/TXT. Filtro backend de bloques `<think>`.
 
 ---
 
@@ -903,6 +903,42 @@ Clasificacion de archivos en 3 estados: disponible, recuperable, perdido.
 
 ---
 
+## Fase 13: Google Drive — Explorar y subir archivos
+
+> **Estado:** [x] Completada
+> **Prioridad:** Media
+
+### Tareas
+- [x] Crear `backend/services/google_drive.py` con funciones:
+  - `list_files(creds, query, folder_id, max_results)` — listar archivos con filtros
+  - `list_recent(creds, max_results)` — archivos recientes del usuario
+  - `get_file(creds, file_id)` — metadata de archivo
+  - `download_file(creds, file_id)` — descargar (con export para Google Docs/Sheets/Slides)
+  - `upload_file(creds, filename, content, mime_type, folder_id?)` — subir archivo
+  - `list_folders(creds)` — listar carpetas
+- [x] Agregar 5 endpoints Drive en `backend/routers/google.py`:
+  - `GET /api/google/drive/files?q=&folder=&max=` — listar archivos
+  - `GET /api/google/drive/files/recent` — archivos recientes
+  - `GET /api/google/drive/files/{id}` — metadata
+  - `GET /api/google/drive/files/{id}/download` — descargar
+  - `POST /api/google/drive/upload` — subir archivo (multipart)
+- [x] Frontend: seccion Drive dentro del modal Google (tabs Recientes/Buscar)
+- [x] Frontend: archivos como cards (icono por tipo, nombre, tamano, fecha)
+- [x] Frontend: iconos coloreados por tipo (folder amarillo, gdoc azul, gsheet verde, gslides amarillo, pdf rojo)
+- [x] Frontend: busqueda en Drive (search bar con input + boton)
+- [x] Frontend: click en archivo → abre en Google Drive (webViewLink)
+- [x] Frontend: boton descargar en cada archivo
+- [x] Frontend: formulario de subida a Drive (file picker + boton subir)
+
+### Archivos creados/modificados
+- `backend/services/google_drive.py` — CREADO: _get_service, list_files, list_recent, get_file, download_file, upload_file, list_folders, _format_file, MIME_ICONS
+- `backend/routers/google.py` — Imports (UploadFile, File, Response, drive_*), 5 endpoints Drive
+- `frontend/index.html` — Seccion gdrive-section en google-connected (tabs, search bar, file list, upload form)
+- `frontend/css/style.css` — Estilos gdrive-section, gdrive-header, gdrive-tabs, gdrive-file, gdrive-file-icon (colores por tipo), gdrive-upload-form, btn-gdrive-*
+- `frontend/js/app.js` — Estado driveTab/driveUploadFile, refs DOM Drive, loadDriveFiles, renderDriveFiles, formatDriveDate, gdriveTabs handler, upload handlers (pick/send/cancel), search handler, integracion con updateGoogleUI
+
+---
+
 ## Notas de proceso
 
 > **IMPORTANTE:** Este documento DEBE actualizarse al final de cada fase completada. Incluir: tareas realizadas, archivos creados/modificados, verificaciones y siguiente paso.
@@ -940,3 +976,4 @@ Clasificacion de archivos en 3 estados: disponible, recuperable, perdido.
 | 25 | 2026-02-07 | Fase 9+10 Google OAuth | Infraestructura seguridad (Fernet encrypt, GoogleToken model, config vars) + flujo OAuth completo (4 endpoints, modal UI, boton header, scopes badges, redirect handling). get_valid_credentials() para fases futuras | Build Docker + verificar OAuth flow |
 | 26 | 2026-02-07 | Fase 11 Google Calendar | google_calendar.py service (list/get/create/delete events), 5 endpoints en google router, UI Calendar en modal (tabs hoy/semana, event cards, create form) | Build Docker + verificar Calendar |
 | 27 | 2026-02-07 | Fase 12 Gmail | google_gmail.py service (list_messages, get_message, send_message), 4 endpoints Gmail en google router, UI Gmail en modal (tabs inbox/no leidos, email cards, compose form, detail view, badge no leidos) | Build Docker + verificar Gmail |
+| 28 | 2026-02-07 | Fase 13 Google Drive | google_drive.py service (list_files, list_recent, get_file, download_file, upload_file, list_folders), 5 endpoints Drive en google router, UI Drive en modal (tabs recientes/buscar, file cards con iconos por tipo, search bar, upload form, descargar/abrir) | Build Docker + verificar Drive |

@@ -693,6 +693,7 @@ function updateGoogleUI(data) {
         });
         loadCalendarEvents();
         loadGmailMessages();
+        loadDriveFiles();
     } else {
         googleDisconnected.hidden = false;
         googleConnectedSection.hidden = true;
@@ -991,6 +992,207 @@ async function openGmailDetail(messageId) {
     } catch (err) {
         $('#gmail-detail-subject').textContent = 'Error';
         $('#gmail-detail-body').textContent = err.message;
+    }
+}
+
+// --- Google Drive ---
+
+let driveTab = 'recent';
+const gdriveFiles = $('#gdrive-files');
+const gdriveUploadForm = $('#gdrive-upload-form');
+const gdriveFileInput = $('#gdrive-file-input');
+const gdriveSearchBar = $('#gdrive-search-bar');
+const gdriveSearchInput = $('#gdrive-search-input');
+const btnGdriveUpload = $('#btn-gdrive-upload');
+const btnGdriveUploadCancel = $('#btn-gdrive-upload-cancel');
+const btnGdriveUploadSend = $('#btn-gdrive-upload-send');
+const btnGdrivePick = $('#btn-gdrive-pick');
+const gdriveUploadPreview = $('#gdrive-upload-preview');
+const gdriveUploadName = $('#gdrive-upload-name');
+const gdriveUploadSize = $('#gdrive-upload-size');
+const gdriveTabs = document.querySelectorAll('.gdrive-tab');
+
+let driveUploadFile = null;
+
+gdriveTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+        driveTab = tab.dataset.driveTab;
+        gdriveTabs.forEach(t => t.classList.toggle('active', t.dataset.driveTab === driveTab));
+        gdriveSearchBar.hidden = driveTab !== 'search';
+        if (driveTab === 'recent') {
+            loadDriveFiles();
+        } else {
+            gdriveFiles.innerHTML = '<div class="gdrive-empty">Escribe para buscar en Drive</div>';
+            gdriveSearchInput.focus();
+        }
+    });
+});
+
+$('#btn-gdrive-search').addEventListener('click', () => {
+    const q = gdriveSearchInput.value.trim();
+    if (q) loadDriveFiles(q);
+});
+
+gdriveSearchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        const q = gdriveSearchInput.value.trim();
+        if (q) loadDriveFiles(q);
+    }
+});
+
+btnGdriveUpload.addEventListener('click', () => {
+    gdriveUploadForm.hidden = !gdriveUploadForm.hidden;
+    if (!gdriveUploadForm.hidden) {
+        driveUploadFile = null;
+        gdriveUploadPreview.hidden = true;
+        btnGdriveUploadSend.disabled = true;
+    }
+});
+
+btnGdriveUploadCancel.addEventListener('click', () => {
+    gdriveUploadForm.hidden = true;
+    driveUploadFile = null;
+});
+
+btnGdrivePick.addEventListener('click', () => {
+    gdriveFileInput.click();
+});
+
+gdriveFileInput.addEventListener('change', () => {
+    const file = gdriveFileInput.files[0];
+    gdriveFileInput.value = '';
+    if (!file) return;
+    driveUploadFile = file;
+    gdriveUploadName.textContent = file.name;
+    gdriveUploadSize.textContent = formatFileSize(file.size);
+    gdriveUploadPreview.hidden = false;
+    btnGdriveUploadSend.disabled = false;
+});
+
+btnGdriveUploadSend.addEventListener('click', async () => {
+    if (!driveUploadFile) return;
+    btnGdriveUploadSend.disabled = true;
+    btnGdriveUploadSend.textContent = 'Subiendo...';
+    try {
+        const formData = new FormData();
+        formData.append('file', driveUploadFile);
+
+        const res = await fetch(API + '/api/google/drive/upload', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + getToken() },
+            body: formData,
+        });
+        if (res.status === 401) { clearAuth(); showScreen('login'); return; }
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Error subiendo archivo');
+        showToast('Archivo subido a Drive');
+        gdriveUploadForm.hidden = true;
+        driveUploadFile = null;
+        loadDriveFiles();
+    } catch (err) {
+        showToast('Error: ' + err.message);
+    } finally {
+        btnGdriveUploadSend.disabled = false;
+        btnGdriveUploadSend.textContent = 'Subir';
+    }
+});
+
+async function loadDriveFiles(query) {
+    if (!googleConnected) return;
+    gdriveFiles.innerHTML = '<div class="gdrive-loading">Cargando...</div>';
+    try {
+        let endpoint;
+        if (query) {
+            endpoint = '/api/google/drive/files?q=' + encodeURIComponent(query);
+        } else {
+            endpoint = '/api/google/drive/files/recent';
+        }
+        const files = await apiGet(endpoint);
+        renderDriveFiles(files);
+    } catch (err) {
+        gdriveFiles.innerHTML = '<div class="gdrive-empty">Error cargando archivos</div>';
+    }
+}
+
+function renderDriveFiles(files) {
+    gdriveFiles.innerHTML = '';
+    if (files.length === 0) {
+        gdriveFiles.innerHTML = '<div class="gdrive-empty">Sin archivos</div>';
+        return;
+    }
+    files.forEach(f => {
+        const el = document.createElement('div');
+        el.className = 'gdrive-file';
+
+        const typeClass = f.file_type || 'file';
+        const sizeStr = f.size ? formatFileSize(f.size) : '';
+        const dateStr = f.modified ? formatDriveDate(f.modified) : '';
+        const metaParts = [typeClass.toUpperCase(), sizeStr, dateStr].filter(Boolean);
+
+        el.innerHTML = `
+            <div class="gdrive-file-icon ${escapeHtml(typeClass)}">${escapeHtml(typeClass.substring(0, 4))}</div>
+            <div class="gdrive-file-info">
+                <div class="gdrive-file-name">${escapeHtml(f.name)}</div>
+                <div class="gdrive-file-meta">${metaParts.join(' \u00b7 ')}</div>
+            </div>
+            ${f.is_folder ? '' : '<button class="gdrive-file-download" title="Descargar"><svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg></button>'}
+        `;
+
+        // Click on file info → open in browser
+        el.querySelector('.gdrive-file-info').addEventListener('click', () => {
+            if (f.web_link) {
+                window.open(f.web_link, '_blank');
+            } else if (f.is_folder) {
+                // Navigate into folder
+                loadDriveFiles();
+            }
+        });
+
+        // Click download button
+        const dlBtn = el.querySelector('.gdrive-file-download');
+        if (dlBtn) {
+            dlBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                try {
+                    const res = await fetch(API + `/api/google/drive/files/${f.id}/download`, {
+                        headers: { 'Authorization': 'Bearer ' + getToken() },
+                    });
+                    if (!res.ok) {
+                        const err = await res.json().catch(() => ({}));
+                        showToast(err.detail || 'Error al descargar');
+                        return;
+                    }
+                    const blob = await res.blob();
+                    const blobUrl = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = blobUrl;
+                    a.download = f.name;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    URL.revokeObjectURL(blobUrl);
+                } catch (err) {
+                    showToast('Error: ' + err.message);
+                }
+            });
+        }
+
+        gdriveFiles.appendChild(el);
+    });
+}
+
+function formatDriveDate(isoStr) {
+    if (!isoStr) return '';
+    try {
+        const d = new Date(isoStr);
+        const now = new Date();
+        if (d.toDateString() === now.toDateString()) {
+            return d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+        }
+        return d.toLocaleDateString('es', { day: 'numeric', month: 'short' });
+    } catch {
+        return isoStr;
     }
 }
 

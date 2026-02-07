@@ -3,7 +3,7 @@
 > **Proyecto:** Secretaria — Asistente Personal PWA
 > **Objetivo:** Integrar Google Account (OAuth 2.0) para acceso a Calendar, Gmail, Drive y Contacts
 > **Fecha creacion:** 2026-02-07
-> **Estado global:** Fase 9+10+11+12 completadas (OAuth + Calendar + Gmail)
+> **Estado global:** Fase 9+10+11+12+13 completadas (OAuth + Calendar + Gmail + Drive)
 
 ---
 
@@ -15,7 +15,7 @@
 | 10 | OAuth 2.0 — Flujo de autenticacion Google | Completada |
 | 11 | Google Calendar — Lectura y creacion de eventos | Completada |
 | 12 | Gmail — Lectura y envio de correos | Completada |
-| 13 | Google Drive — Explorar y subir archivos | Pendiente |
+| 13 | Google Drive — Explorar y subir archivos | Completada |
 | 14 | Google Contacts — Lectura de contactos | Pendiente |
 | 15 | Comandos naturales — Chat con acciones Google | Pendiente |
 | 16 | UI integrada — Panel Google en sidebar | Pendiente |
@@ -178,28 +178,39 @@ Leer inbox del usuario y enviar correos desde el chat.
 
 ## Fase 13: Google Drive — Explorar y subir archivos
 
-> **Estado:** [ ] Pendiente
+> **Estado:** [x] Completada
 > **Prioridad:** Media
 
 ### Objetivo
 Explorar archivos del Drive del usuario y subir archivos desde el chat.
 
 ### Tareas
-- [ ] Crear `backend/services/google_drive.py`:
-  - `list_files(token, query, folder_id, max_results)` — listar archivos
-  - `get_file(token, file_id)` — metadata de archivo
-  - `download_file(token, file_id)` — descargar contenido
-  - `upload_file(token, filename, content, mime_type, folder_id?)` — subir archivo
-  - `list_folders(token)` — listar carpetas
-- [ ] Crear endpoints:
-  - `GET /api/google/drive/files?q=&folder=` — listar archivos
+- [x] Crear `backend/services/google_drive.py`:
+  - `list_files(creds, query, folder_id, max_results)` — listar archivos
+  - `list_recent(creds, max_results)` — archivos recientes
+  - `get_file(creds, file_id)` — metadata de archivo
+  - `download_file(creds, file_id)` — descargar contenido (con export para Google Docs)
+  - `upload_file(creds, filename, content, mime_type, folder_id?)` — subir archivo
+  - `list_folders(creds)` — listar carpetas
+- [x] Crear endpoints:
+  - `GET /api/google/drive/files?q=&folder=&max=` — listar archivos
   - `GET /api/google/drive/files/recent` — archivos recientes
   - `GET /api/google/drive/files/{id}` — metadata
   - `GET /api/google/drive/files/{id}/download` — descargar
   - `POST /api/google/drive/upload` — subir archivo
-- [ ] Frontend: explorador Drive en sidebar (integrar con tab Archivos existente?)
-- [ ] Frontend: renderizar archivos Drive como cards (nombre, tipo, tamano, fecha)
-- [ ] Frontend: boton "Subir a Drive" en archivos generados/subidos
+- [x] Frontend: seccion Drive dentro del modal Google (tabs Recientes/Buscar)
+- [x] Frontend: renderizar archivos Drive como cards (nombre, tipo, tamano, fecha, icono por tipo)
+- [x] Frontend: boton subir archivo a Drive (form con file picker)
+- [x] Frontend: busqueda en Drive (search bar con input + boton)
+- [x] Frontend: click en archivo → abre en Google Drive (webViewLink)
+- [x] Frontend: boton descargar en cada archivo (con export para Google Workspace files)
+
+### Archivos creados/modificados
+- `backend/services/google_drive.py` — CREADO: _get_service, list_files, list_recent, get_file, download_file, upload_file, list_folders, _format_file, MIME_ICONS
+- `backend/routers/google.py` — Agregados 5 endpoints Drive, imports drive_*, UploadFile, File, Response
+- `frontend/index.html` — Seccion Drive en google-connected: gdrive-files, gdrive-search-bar, gdrive-upload-form
+- `frontend/css/style.css` — Estilos gdrive-section, gdrive-header, gdrive-tabs, gdrive-file, gdrive-upload-form, btn-gdrive-*
+- `frontend/js/app.js` — loadDriveFiles, renderDriveFiles, formatDriveDate, gdriveTabs, gdriveUpload handlers
 
 ### Verificacion
 - [ ] `GET /api/google/drive/files/recent` → lista archivos recientes
