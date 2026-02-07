@@ -38,9 +38,44 @@ async def debug_intent(
     user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    import httpx
+    import json as _json
     content = body.get("message", "")
     kw_match = has_google_keywords(content)
     creds = get_valid_credentials(db, user.id)
+
+    # Raw MiniMax intent call for debugging
+    raw_minimax = None
+    minimax_error = None
+    try:
+        from backend.services.google_actions import INTENT_SYSTEM_PROMPT, WEEKDAYS_ES
+        now = datetime.now()
+        today_str = now.strftime("%Y-%m-%d")
+        weekday = WEEKDAYS_ES[now.weekday()]
+        system = INTENT_SYSTEM_PROMPT.replace("{today}", today_str).replace("{weekday}", weekday)
+        url = f"{settings.MINIMAX_API_URL}/chat/completions"
+        payload = {
+            "model": settings.MINIMAX_MODEL,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": content},
+            ],
+            "temperature": 0.1,
+            "max_tokens": 300,
+        }
+        headers = {
+            "Authorization": f"Bearer {settings.MINIMAX_API_KEY}",
+            "Content-Type": "application/json",
+        }
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(url, json=payload, headers=headers)
+            raw_minimax = {
+                "status": resp.status_code,
+                "body": resp.text[:1000],
+            }
+    except Exception as e:
+        minimax_error = str(e)
+
     intent = None
     action_result = None
     if kw_match and creds:
@@ -51,6 +86,8 @@ async def debug_intent(
         "message": content,
         "keyword_match": kw_match,
         "has_creds": creds is not None,
+        "minimax_raw": raw_minimax,
+        "minimax_error": minimax_error,
         "intent": intent,
         "action_result_type": action_result.get("type") if action_result else None,
         "action_result_preview": str(action_result)[:500] if action_result else None,
