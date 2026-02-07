@@ -3,7 +3,7 @@
 > **Objetivo:** Aplicación web mobile-first de asistente personal (secretaria) con chat continuo, gestión documental, generación de documentos y reenvío por Telegram
 > **Carpeta:** D:\MINIMAX\Secretaria
 > **Ultima actualizacion:** 2026-02-07
-> **Estado global:** Fase 7 completada + Explorador de archivos con ghost files visibles como "no disponible"
+> **Estado global:** Fase 7 completada + Archivos recuperables tras redeploy (auto-regeneracion de docs y TXT)
 
 ---
 
@@ -11,7 +11,7 @@
 
 Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases de desarrollo. El cerebro es MINIMAX AI (chat) + Perplexity (búsqueda externa). La interfaz es un chat oscuro tipo WhatsApp optimizado para teléfono (PWA). Backend en Python/FastAPI, SQLite como BD, Docker para contenedores, Coolify para despliegue final desde GitHub.
 
-**ESTADO:** Aplicacion funcionando correctamente en produccion. Explorador de archivos en sidebar con tabs (Conversaciones/Archivos) y arbol colapsable por tipo. Archivos fantasma (sin archivo fisico en disco) visibles con indicador "No disponible" y estilos grises (opacity reducida, sin click). Descargas via fetch+blob con manejo de errores (sin abrir pestanas nuevas con JSON). Generacion de documentos soporta DOCX y TXT. Filtro backend de bloques `<think>` en streaming y en guardado/generacion. Documentos auto-regenerables si se pierden del disco tras redeploy.
+**ESTADO:** Aplicacion funcionando correctamente en produccion. Explorador de archivos en sidebar con tabs (Conversaciones/Archivos) y arbol colapsable por tipo. Archivos perdidos tras redeploy clasificados en "Recuperable" (auto-regeneracion al click) o "No disponible" (irrecuperables). Documentos generados se regeneran desde contenido del mensaje; TXT subidos se recuperan desde extracted_text en BD. Descargas via fetch+blob con manejo de errores. Generacion de documentos soporta DOCX y TXT. Filtro backend de bloques `<think>` en streaming y en guardado/generacion.
 
 ---
 
@@ -736,6 +736,55 @@ En lugar de ocultar archivos fantasma, mostrarlos con indicador visual "no dispo
 
 ---
 
+## Fix: Archivos recuperables tras redeploy (recoverable files)
+
+> **Estado:** [x] Completada
+> **Prioridad:** Alta
+
+### Problema
+Tras cada redeploy en Coolify, los archivos fisicos en `/data/documentos/`, `/data/imagenes/`, `/data/generados/` se pierden. La BD SQLite persiste, asi que los registros `File` existen pero los archivos fisicos no. El endpoint `GET /api/files` marcaba todos como `available: false` y el frontend bloqueaba los clicks en TODOS los archivos no disponibles. Sin embargo, el backend YA tenia logica de auto-regeneracion en `documents.py` para documentos generados (desde contenido del mensaje), y los TXT subidos tenian `extracted_text` en la BD. Ambos tipos eran recuperables, pero el frontend impedia que el usuario llegara a usarlos.
+
+### Solucion
+Clasificacion de archivos en 3 estados: disponible, recuperable, perdido.
+
+**Backend (`routers/files.py`):**
+- Agregado campo `recoverable: bool` al schema `FileExplorerItem`
+- Logica: si no `available` y es generado con `message_id` → `recoverable = True`
+- Logica: si no `available` y tiene `extracted_text` → `recoverable = True`
+- Si no cumple ninguno → `recoverable = False`
+
+**Backend (`routers/upload.py`):**
+- En `serve_file()`, antes del 404, intenta recuperar desde `extracted_text` si el archivo tiene ese campo
+- Crea directorios padre con `os.makedirs()` y escribe el archivo de texto
+- Si sigue sin existir tras el intento, retorna 404 original
+
+**Frontend (`js/app.js`):**
+- Clasificacion: `canClick = f.available || f.recoverable`
+- Archivos recuperables: clase CSS `recoverable`, label "Recuperable" en meta, click handler habilitado
+- Archivos irrecuperables: clase CSS `unavailable`, label "No disponible", sin click (sin cambios)
+- Tras descarga exitosa de archivo recuperable: `loadExplorerFiles()` refresca para actualizar estado
+
+**Frontend (`css/style.css`):**
+- `.file-explorer-item.recoverable`: opacity 0.65, cursor pointer
+- `.file-explorer-item.recoverable:hover`: hover effect habilitado
+- `.file-explorer-item.recoverable .file-icon`: fondo dorado oscuro (#7c6f3a)
+
+### Verificacion
+- [ ] Tab "Archivos" → generados muestran "Recuperable" en vez de "No disponible"
+- [ ] Click en DOCX generado → se descarga correctamente (backend regenera desde mensaje)
+- [ ] Click en TXT subido → se descarga correctamente (recuperado desde extracted_text)
+- [ ] Refrescar explorador tras descarga → archivo aparece como disponible (normal)
+- [ ] Archivos de imagen sin archivo fisico → siguen como "No disponible" sin click
+- [ ] Archivos disponibles en disco → funcionan igual que antes (sin regresion)
+
+### Archivos modificados
+- `backend/routers/files.py` — Campo `recoverable: bool` en schema, logica de clasificacion (generated+message_id o extracted_text)
+- `backend/routers/upload.py` — Recuperacion de TXT desde `extracted_text` en `serve_file()` antes de 404
+- `frontend/js/app.js` — Clasificacion 3 estados (available/recoverable/lost), click handler condicional, label "Recuperable", refresh post-descarga
+- `frontend/css/style.css` — Clase `.recoverable` (opacity 0.65, cursor pointer, icono dorado, hover effect)
+
+---
+
 ## Notas de proceso
 
 > **IMPORTANTE:** Este documento DEBE actualizarse al final de cada fase completada. Incluir: tareas realizadas, archivos creados/modificados, verificaciones y siguiente paso.
@@ -769,3 +818,4 @@ En lugar de ocultar archivos fantasma, mostrarlos con indicador visual "no dispo
 | 21 | 2026-02-07 | File explorer | Explorador de archivos en sidebar: tabs Conversaciones/Archivos, endpoint GET /api/files, arbol colapsable por tipo (Documentos/Imagenes/Generados), iconos por tipo, descarga directa, lifecycle integration | Verificar en produccion |
 | 22 | 2026-02-07 | Fix ghost files | Filtro os.path.exists en GET /api/files para eliminar archivos fantasma. Descargas via fetch+blob con toast de error en vez de navegacion directa a JSON. Auth via header Bearer en vez de query param | Verificar en produccion |
 | 23 | 2026-02-07 | Fix ghost visible | Ghost files ahora visibles como "No disponible" (opacity 0.45, gris, sin click) en vez de ocultarse. Campo `available` en API. Toast de error en loadExplorerFiles | Verificar en produccion |
+| 24 | 2026-02-07 | Recoverable files | Archivos perdidos tras redeploy clasificados en "Recuperable" (auto-regeneracion al click) o "No disponible" (irrecuperables). Campo `recoverable` en API. TXT subidos recuperados desde `extracted_text`. Refresh post-descarga | Verificar en produccion |
