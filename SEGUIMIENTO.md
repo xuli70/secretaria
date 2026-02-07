@@ -3,7 +3,7 @@
 > **Objetivo:** Aplicación web mobile-first de asistente personal (secretaria) con chat continuo, gestión documental, generación de documentos y reenvío por Telegram
 > **Carpeta:** D:\MINIMAX\Secretaria
 > **Ultima actualizacion:** 2026-02-07
-> **Estado global:** Fase 9+10+11+12+13+14+15 completadas + Fix bugs UX (Gmail Volver, Calendar banner, File delete)
+> **Estado global:** Fase 9+10+11+12+13+14+15 completadas + Fix bugs UX + Fix Google NL commands (think blocks, system role, timezone)
 
 ---
 
@@ -11,7 +11,7 @@
 
 Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases de desarrollo. El cerebro es MINIMAX AI (chat) + Perplexity (búsqueda externa). La interfaz es un chat oscuro tipo WhatsApp optimizado para teléfono (PWA). Backend en Python/FastAPI, SQLite como BD, Docker para contenedores, Coolify para despliegue final desde GitHub.
 
-**ESTADO:** Aplicacion funcionando correctamente en produccion. Google OAuth 2.0 integrado con Google Calendar, Gmail, Drive y Contacts. Calendar: lectura de eventos (hoy/semana), creacion y eliminacion. Gmail: inbox, no leidos, detalle de mensaje, envio de correo, badge de no leidos. Drive: archivos recientes, busqueda, descarga (con export de Google Docs), subida de archivos. UI en modal Google con secciones Calendar, Gmail y Drive. Explorador de archivos en sidebar con tabs y arbol colapsable. Archivos recuperables tras redeploy. Generacion de documentos DOCX/TXT. Filtro backend de bloques `<think>`.
+**ESTADO:** Aplicacion funcionando correctamente en produccion. Google OAuth 2.0 integrado con Google Calendar, Gmail, Drive y Contacts. Calendar: lectura de eventos (hoy/semana), creacion y eliminacion. Gmail: inbox, no leidos, detalle de mensaje, envio de correo, badge de no leidos. Drive: archivos recientes, busqueda, descarga (con export de Google Docs), subida de archivos. UI en modal Google con secciones Calendar, Gmail y Drive. Explorador de archivos en sidebar con tabs y arbol colapsable. Archivos recuperables tras redeploy. Generacion de documentos DOCX/TXT. Filtro backend de bloques `<think>`. Comandos Google por lenguaje natural en chat: 8 acciones verificadas (calendar today/week/create, gmail unread/search/send, drive recent/search).
 
 ---
 
@@ -1055,3 +1055,4 @@ Testing en produccion (Chrome DevTools) revelo 3 problemas:
 | 28 | 2026-02-07 | Fase 13 Google Drive | google_drive.py service (list_files, list_recent, get_file, download_file, upload_file, list_folders), 5 endpoints Drive en google router, UI Drive en modal (tabs recientes/buscar, file cards con iconos por tipo, search bar, upload form, descargar/abrir) | Build Docker + verificar Drive |
 | 29 | 2026-02-07 | Fase 14 Contacts | google_contacts.py service (People API: list, search, get), 3 endpoints Contacts en google router, autocomplete en Gmail compose (cache local + busqueda remota, dropdown con avatar/nombre/email, keyboard nav) | Build Docker + verificar Contacts |
 | 30 | 2026-02-07 | Fix bugs UX | Gmail Volver (lista/detalle mutuamente excluyentes), Calendar Banner (eventos de hoy en chat), File Delete (endpoint DELETE + boton X en explorador) | Push a GitHub + verificar en produccion |
+| 31 | 2026-02-07 | Fix Google NL commands | 3 bugs detectados y corregidos en comandos Google por lenguaje natural: (1) Strip `<think>` blocks de MiniMax M2.1 en detect_intent, (2) System role solo como primer mensaje para MiniMax (append al system prompt inicial), (3) Timezone Europe/Madrid en _parse_datetime para Google Calendar API | 8/8 tests pasados en produccion |
