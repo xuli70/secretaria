@@ -3,7 +3,7 @@
 > **Objetivo:** Aplicación web mobile-first de asistente personal (secretaria) con chat continuo, gestión documental, generación de documentos y reenvío por Telegram
 > **Carpeta:** D:\MINIMAX\Secretaria
 > **Ultima actualizacion:** 2026-02-07
-> **Estado global:** Fase 7 completada + Fix auto-regeneracion documentos perdidos
+> **Estado global:** Fase 7 completada + File-only upload espera instrucciones
 
 ---
 
@@ -11,7 +11,7 @@
 
 Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases de desarrollo. El cerebro es MINIMAX AI (chat) + Perplexity (búsqueda externa). La interfaz es un chat oscuro tipo WhatsApp optimizado para teléfono (PWA). Backend en Python/FastAPI, SQLite como BD, Docker para contenedores, Coolify para despliegue final desde GitHub.
 
-**ESTADO:** Aplicacion funcionando correctamente en produccion. Documentos auto-regenerables si se pierden del disco tras redeploy.
+**ESTADO:** Aplicacion funcionando correctamente en produccion. Documentos auto-regenerables si se pierden del disco tras redeploy. Upload de archivo sin texto espera instrucciones del usuario.
 
 ---
 
@@ -531,6 +531,33 @@ Los archivos DOCX generados se almacenan en `/data/generados/` dentro del conten
 
 ---
 
+## Feature: Upload de archivo sin texto espera instrucciones
+
+> **Estado:** [x] Completada
+> **Prioridad:** Media
+
+### Problema
+Al subir un documento (PDF, DOCX, TXT, etc.) sin escribir texto, la IA recibia el contenido extraido completo y empezaba a analizar/resumir sin que nadie se lo pidiera. El usuario quiere que al subir un archivo, la app confirme la recepcion y espere instrucciones.
+
+### Solucion
+Tres cambios en `backend/routers/chat.py`:
+
+1. **Auto-titulo movido antes del shortcut** — usa `count()` para detectar primer mensaje, funciona tanto para file-only como para mensajes normales
+2. **Shortcut file-only** — si hay archivos pero no texto (`bool(file_ids) and not content`), devuelve respuesta fija "Archivo recibido: **nombre.pdf**. Estoy listo..." via SSE sin llamar a la IA. Mensaje guardado con `model_used="system"`
+3. **Historial enriquecido con archivos previos** — `joinedload(Message.files)` en query de historial + inyeccion de `extracted_text` en mensajes user anteriores que tengan archivos adjuntos, para que la IA tenga contexto del documento cuando el usuario luego de instrucciones
+
+### Verificacion (en produccion tras redeploy)
+- [ ] Subir PDF sin texto → respuesta fija "Archivo recibido: **X**. Estoy listo..."
+- [ ] Luego escribir "Resumeme el documento" → la IA responde con el contenido del PDF
+- [ ] Subir archivo CON texto (ej: "Resumeme esto") → comportamiento actual (IA analiza directo)
+- [ ] Modo documento/busqueda con archivo sin texto → respuesta fija igual
+- [ ] Auto-titulo funciona tanto con archivo solo como con texto
+
+### Archivos modificados
+- `backend/routers/chat.py` — Auto-titulo movido, shortcut file-only con SSE stream fijo, historial enriquecido con joinedload(Message.files) y extracted_text de mensajes previos
+
+---
+
 ## Notas de proceso
 
 > **IMPORTANTE:** Este documento DEBE actualizarse al final de cada fase completada. Incluir: tareas realizadas, archivos creados/modificados, verificaciones y siguiente paso.
@@ -558,3 +585,4 @@ Los archivos DOCX generados se almacenan en `/data/generados/` dentro del conten
 | 15 | 2026-02-07 | Fix SSE newlines | Respuestas AI no visibles por newlines en chunks SSE. Modelo emite `<think>` con saltos de linea que rompen formato SSE. Fix: escapar `\n` → `\\n` en backend, decodificar en frontend | Verificar en produccion |
 | 16 | 2026-02-07 | Fix auth descargas | Descargas de archivos devolvian "Not authenticated" porque browser no envia Authorization header en <a href>/<img src>. Fix: fallback a ?token= query param en backend + authUrl() helper en frontend | Verificar en produccion |
 | 17 | 2026-02-07 | Fix docs perdidos | Documentos generados perdidos tras redeploy Coolify. Fix: auto-regeneracion DOCX desde contenido del mensaje en BD cuando archivo falta del disco | Verificar en produccion |
+| 18 | 2026-02-07 | File-only upload | Upload de archivo sin texto ahora confirma recepcion y espera instrucciones en vez de auto-analizar. Historial enriquecido con archivos previos para que la IA tenga contexto en follow-ups | Verificar en produccion tras redeploy |
