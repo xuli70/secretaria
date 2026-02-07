@@ -3,7 +3,7 @@
 > **Objetivo:** Aplicación web mobile-first de asistente personal (secretaria) con chat continuo, gestión documental, generación de documentos y reenvío por Telegram
 > **Carpeta:** D:\MINIMAX\Secretaria
 > **Ultima actualizacion:** 2026-02-07
-> **Estado global:** Fase 7 completada + Hotfix think tags — Multi-select Telegram forwarding
+> **Estado global:** Fase 7 completada + Hotfix SSE newlines — Respuestas AI visibles
 
 ---
 
@@ -11,7 +11,7 @@
 
 Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases de desarrollo. El cerebro es MINIMAX AI (chat) + Perplexity (búsqueda externa). La interfaz es un chat oscuro tipo WhatsApp optimizado para teléfono (PWA). Backend en Python/FastAPI, SQLite como BD, Docker para contenedores, Coolify para despliegue final desde GitHub.
 
-**ESTADO:** Aplicacion funcionando correctamente en produccion. Multi-select Telegram forwarding implementado.
+**ESTADO:** Aplicacion funcionando correctamente en produccion. Fix SSE newlines aplicado — respuestas AI visibles de nuevo.
 
 ---
 
@@ -444,6 +444,32 @@ Al generar documentos (modo documento activado), las etiquetas `<think>` del mod
 
 ---
 
+## Hotfix: Respuestas AI no visibles por newlines en SSE chunks
+
+> **Estado:** [x] Completada
+> **Prioridad:** Alta
+
+### Problema
+Tras el hotfix de `<think>` tags, las respuestas de la IA no se mostraban en el chat. El modelo MiniMax emite bloques `<think>...</think>` con saltos de linea dentro de los chunks SSE. En `chat.py:301`, cuando el chunk contiene `\n`, el formato SSE se rompe: la linea despues del newline no tiene prefijo `data: ` y el frontend la ignora. La burbuja assistant aparecia vacia (solo timestamp).
+
+### Solucion
+- [x] Backend (`chat.py:301`): escapar newlines en chunks SSE (`chunk.replace('\n', '\\n')`) para que cada linea `data:` sea una sola linea
+- [x] Frontend (`app.js:870`): decodificar newlines escapados al acumular texto (`data.replaceAll('\\n', '\n')`)
+- [x] Push a GitHub → deploy automatico en Coolify
+
+### Verificacion
+- [ ] `docker compose up --build` arranca sin errores
+- [ ] Chat normal → respuesta visible en streaming
+- [ ] Modo documento → respuesta visible + tarjeta DOCX
+- [ ] Modo busqueda → respuesta Perplexity visible
+- [ ] Recargar pagina → historial con respuestas correctas
+
+### Archivos modificados
+- `backend/routers/chat.py` — Escapar `\n` → `\\n` en chunks SSE antes de yield
+- `frontend/js/app.js` — Decodificar `\\n` → `\n` al acumular texto en streaming
+
+---
+
 ## Notas de proceso
 
 > **IMPORTANTE:** Este documento DEBE actualizarse al final de cada fase completada. Incluir: tareas realizadas, archivos creados/modificados, verificaciones y siguiente paso.
@@ -467,4 +493,5 @@ Al generar documentos (modo documento activado), las etiquetas `<think>` del mod
 | 11 | 2026-02-07 | Fix Telegram | Eliminado parse_mode HTML de telegram_bot.py, fix reenvio con caracteres especiales. App completa funcionando en produccion | Mantenimiento continuo |
 | 12 | 2026-02-07 | Fase 7 | Multi-select Telegram forwarding: selection mode (long-press/right-click), bulk send endpoint, contact picker, toast feedback. Reemplaza forward-per-bubble | Verificar en produccion |
 | 13 | 2026-02-07 | Test produccion | Test API completo contra https://secretaria.axcsol.com: health, login, bot-status, contacts, send-bulk OK. Envio bulk (msgs 21+22) a SebastianXL exitoso. Contacto XULITA con errores (chat_id pendiente de verificar) | Verificar UI manual (long-press, selection mode) |
-| 14 | 2026-02-07 | Hotfix think tags | Fix etiquetas `<think>` visibles durante streaming en modo documento. Regex solo eliminaba bloques completos; agregada segunda regex para bloques incompletos. Deploy verificado en produccion, descarga DOCX OK | Mantenimiento continuo |
+| 14 | 2026-02-07 | Hotfix think tags | Fix etiquetas `<think>` visibles durante streaming en modo documento. Regex solo eliminaba bloques completos; agregada segunda regex para bloques incompletos. Deploy verificado en produccion, descarga DOCX OK | Fix SSE newlines |
+| 15 | 2026-02-07 | Fix SSE newlines | Respuestas AI no visibles por newlines en chunks SSE. Modelo emite `<think>` con saltos de linea que rompen formato SSE. Fix: escapar `\n` → `\\n` en backend, decodificar en frontend | Verificar en produccion |
