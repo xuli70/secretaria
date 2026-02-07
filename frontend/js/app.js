@@ -265,17 +265,15 @@ function renderFileExplorer() {
         } else {
             groupEl.classList.remove('hidden-group');
             files.forEach(f => {
-                const url = f.is_generated
-                    ? authUrl(API + `/api/documents/${f.id}`)
-                    : authUrl(API + `/api/upload/files/${f.id}`);
+                const downloadUrl = f.is_generated
+                    ? API + `/api/documents/${f.id}`
+                    : API + `/api/upload/files/${f.id}`;
                 const ext = f.filename.split('.').pop().toUpperCase();
                 const meta = [ext, formatFileSize(f.size_bytes), formatDate(f.created_at)].filter(Boolean).join(' \u00b7 ');
 
-                const item = document.createElement('a');
+                const item = document.createElement('div');
                 item.className = 'file-explorer-item';
-                item.href = url;
-                item.target = '_blank';
-                item.rel = 'noopener';
+                item.style.cursor = 'pointer';
                 item.innerHTML = `
                     <div class="file-icon${f.is_generated ? ' generated' : ''}">${escapeHtml(ext)}</div>
                     <div class="file-explorer-item-info">
@@ -283,6 +281,29 @@ function renderFileExplorer() {
                         <div class="file-explorer-item-meta">${meta}</div>
                     </div>
                 `;
+                item.addEventListener('click', async () => {
+                    try {
+                        const resp = await fetch(downloadUrl, {
+                            headers: { 'Authorization': 'Bearer ' + getToken() },
+                        });
+                        if (!resp.ok) {
+                            const err = await resp.json().catch(() => ({}));
+                            showToast(err.detail || 'Error al descargar archivo');
+                            return;
+                        }
+                        const blob = await resp.blob();
+                        const blobUrl = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = blobUrl;
+                        a.download = f.filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        URL.revokeObjectURL(blobUrl);
+                    } catch (e) {
+                        showToast('Error: ' + e.message);
+                    }
+                });
                 itemsContainer.appendChild(item);
             });
         }

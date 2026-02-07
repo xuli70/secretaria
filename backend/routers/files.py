@@ -1,3 +1,5 @@
+import os
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from datetime import datetime
@@ -38,6 +40,8 @@ def list_all_files(
     )
     result = []
     for f in files:
+        if not f.filepath or not os.path.exists(f.filepath):
+            continue
         result.append(
             FileExplorerItem(
                 id=f.id,
