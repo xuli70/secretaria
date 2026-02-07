@@ -3,7 +3,7 @@
 > **Objetivo:** Aplicación web mobile-first de asistente personal (secretaria) con chat continuo, gestión documental, generación de documentos y reenvío por Telegram
 > **Carpeta:** D:\MINIMAX\Secretaria
 > **Ultima actualizacion:** 2026-02-07
-> **Estado global:** Fase 7 completada + Explorador de archivos con filtro de existencia y descargas seguras
+> **Estado global:** Fase 7 completada + Explorador de archivos con ghost files visibles como "no disponible"
 
 ---
 
@@ -11,7 +11,7 @@
 
 Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases de desarrollo. El cerebro es MINIMAX AI (chat) + Perplexity (búsqueda externa). La interfaz es un chat oscuro tipo WhatsApp optimizado para teléfono (PWA). Backend en Python/FastAPI, SQLite como BD, Docker para contenedores, Coolify para despliegue final desde GitHub.
 
-**ESTADO:** Aplicacion funcionando correctamente en produccion. Explorador de archivos en sidebar con tabs (Conversaciones/Archivos) y arbol colapsable por tipo. Archivos fantasma (sin archivo fisico en disco) filtrados del explorador. Descargas via fetch+blob con manejo de errores (sin abrir pestanas nuevas con JSON). Generacion de documentos soporta DOCX y TXT. Filtro backend de bloques `<think>` en streaming y en guardado/generacion. Documentos auto-regenerables si se pierden del disco tras redeploy.
+**ESTADO:** Aplicacion funcionando correctamente en produccion. Explorador de archivos en sidebar con tabs (Conversaciones/Archivos) y arbol colapsable por tipo. Archivos fantasma (sin archivo fisico en disco) visibles con indicador "No disponible" y estilos grises (opacity reducida, sin click). Descargas via fetch+blob con manejo de errores (sin abrir pestanas nuevas con JSON). Generacion de documentos soporta DOCX y TXT. Filtro backend de bloques `<think>` en streaming y en guardado/generacion. Documentos auto-regenerables si se pierden del disco tras redeploy.
 
 ---
 
@@ -698,6 +698,44 @@ Tras redeploy en Coolify, los archivos fisicos en `/data/documentos/`, `/data/im
 
 ---
 
+## Fix: Archivos fantasma invisibles en explorador (ghost files mostrados como "no disponible")
+
+> **Estado:** [x] Completada
+> **Prioridad:** Media
+
+### Problema
+El commit `82ac0` introdujo un filtro en `GET /api/files` que ocultaba completamente los archivos cuyo fichero fisico no existia en disco (`os.path.exists()` → `continue`). Tras rebuild del contenedor o redeploy en Coolify, si los archivos fisicos se perdian, el API devolvia `[]` y el explorador aparecia vacio — aunque los registros seguian en la BD. Ademas, `loadExplorerFiles()` en el frontend tragaba errores silenciosamente.
+
+### Solucion
+En lugar de ocultar archivos fantasma, mostrarlos con indicador visual "no disponible":
+
+**Backend (`routers/files.py`):**
+- Agregado campo `available: bool` al schema `FileExplorerItem`
+- Quitado el `continue` que ocultaba ghost files; solo se saltan registros sin `filepath` (datos invalidos)
+- `available = os.path.exists(f.filepath)` calculado para cada fichero
+
+**Frontend (`js/app.js`):**
+- `renderFileExplorer()`: items no disponibles reciben clase CSS `unavailable`, cursor `default`, texto "No disponible" en meta, y se renderizan sin click handler (early return)
+- `loadExplorerFiles()`: agregado `showToast('Error cargando archivos')` en el catch
+
+**Frontend (`css/style.css`):**
+- `.file-explorer-item.unavailable`: opacity 0.45, cursor default
+- `.file-explorer-item.unavailable:hover`: sin hover effect
+- `.file-explorer-item.unavailable .file-icon`: fondo gris (#555)
+
+### Verificacion
+- [ ] Archivos con fichero fisico en disco → aparecen normales, click descarga
+- [ ] Archivos fantasma (sin fichero fisico) → aparecen grises con "No disponible", sin click
+- [ ] Error de red en carga de archivos → toast "Error cargando archivos"
+- [ ] Explorador no aparece vacio tras redeploy (registros BD siguen visibles)
+
+### Archivos modificados
+- `backend/routers/files.py` — Campo `available: bool` en schema, filtro relajado (solo skip sin filepath), `os.path.exists()` para available
+- `frontend/js/app.js` — Clase `unavailable` condicional, meta "No disponible", early return sin click handler, toast de error en catch
+- `frontend/css/style.css` — Estilos `.file-explorer-item.unavailable` (opacity, hover, icono gris)
+
+---
+
 ## Notas de proceso
 
 > **IMPORTANTE:** Este documento DEBE actualizarse al final de cada fase completada. Incluir: tareas realizadas, archivos creados/modificados, verificaciones y siguiente paso.
@@ -730,3 +768,4 @@ Tras redeploy en Coolify, los archivos fisicos en `/data/documentos/`, `/data/im
 | 20 | 2026-02-07 | Formato TXT docs | Soporte TXT en generacion de documentos: generate_txt() en backend, selector DOCX/TXT en frontend, bifurcacion por formato, auto-regeneracion por extension, mime dinamico, label dinamico en cards | Verificar en produccion |
 | 21 | 2026-02-07 | File explorer | Explorador de archivos en sidebar: tabs Conversaciones/Archivos, endpoint GET /api/files, arbol colapsable por tipo (Documentos/Imagenes/Generados), iconos por tipo, descarga directa, lifecycle integration | Verificar en produccion |
 | 22 | 2026-02-07 | Fix ghost files | Filtro os.path.exists en GET /api/files para eliminar archivos fantasma. Descargas via fetch+blob con toast de error en vez de navegacion directa a JSON. Auth via header Bearer en vez de query param | Verificar en produccion |
+| 23 | 2026-02-07 | Fix ghost visible | Ghost files ahora visibles como "No disponible" (opacity 0.45, gris, sin click) en vez de ocultarse. Campo `available` en API. Toast de error en loadExplorerFiles | Verificar en produccion |
