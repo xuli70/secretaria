@@ -1,10 +1,13 @@
 """Google Actions — Natural language intent detection and execution for chat."""
 
 import json
+import logging
 import re
 from datetime import datetime, timedelta, timezone
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 from backend.config import settings
 from backend.services.google_calendar import list_events, create_event
@@ -100,18 +103,22 @@ async def detect_intent(message: str) -> dict | None:
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.post(url, json=payload, headers=headers)
+            logger.info("detect_intent status=%s", resp.status_code)
             if resp.status_code != 200:
+                logger.warning("detect_intent bad status: %s %s", resp.status_code, resp.text[:200])
                 return None
             data = resp.json()
             content = data["choices"][0]["message"]["content"].strip()
+            logger.info("detect_intent raw content: %s", content[:300])
             # Strip markdown code fences if present
             content = re.sub(r"^```(?:json)?\s*", "", content)
             content = re.sub(r"\s*```$", "", content)
             result = json.loads(content)
+            logger.info("detect_intent parsed: %s", result)
             if result.get("action"):
                 return result
-    except (json.JSONDecodeError, KeyError, IndexError, Exception):
-        pass
+    except Exception as e:
+        logger.exception("detect_intent error: %s", e)
 
     return None
 

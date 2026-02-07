@@ -1,7 +1,10 @@
 import asyncio
+import logging
 import os
 import re
 from datetime import datetime, timezone
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -349,12 +352,17 @@ async def send_message(
     # --- Google Actions: detect intent and execute if applicable ---
     google_action_result = None
     if content and not use_search and not generate_doc:
+        logger.info("Checking Google keywords for: %s", content[:80])
         if has_google_keywords(content):
+            logger.info("Google keywords matched!")
             creds = get_valid_credentials(db, user.id)
+            logger.info("Google creds: %s", "OK" if creds else "NONE")
             if creds:
                 intent = await detect_intent(content)
+                logger.info("Detected intent: %s", intent)
                 if intent:
                     google_action_result = execute_action(intent, creds)
+                    logger.info("Action result type: %s", google_action_result.get("type") if google_action_result else "NONE")
                     if google_action_result:
                         ctx = format_action_context(google_action_result)
                         if ctx:
@@ -367,6 +375,7 @@ async def send_message(
                                 ),
                             })
             else:
+                logger.info("No Google creds, suggesting connection")
                 # Google not connected — hint the AI to suggest connecting
                 ai_messages.append({
                     "role": "system",
