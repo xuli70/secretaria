@@ -311,6 +311,9 @@ async def send_message(
             save_db.add(assistant_msg)
             save_db.flush()
 
+            # Send message ID so frontend can enable forward button
+            yield f"data: [MSG_ID:{assistant_msg.id}]\n\n"
+
             # Generate DOCX if in document mode
             if generate_doc and full_response.strip():
                 save_dir = os.path.join(settings.DATA_DIR, "generados")

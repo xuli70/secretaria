@@ -559,6 +559,10 @@ function closeForwardMenusHandler() {
 
 // --- Messages ---
 
+function stripThinkTags(text) {
+    return text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+}
+
 function renderMessage(role, content, timestamp, files, messageId) {
     const bubble = document.createElement('div');
     bubble.className = `msg-bubble ${role}`;
@@ -600,7 +604,10 @@ function renderMessage(role, content, timestamp, files, messageId) {
     }
 
     // Render text content (skip placeholder if we have files)
-    const displayContent = (files && files.length > 0 && content === '[Archivo adjunto]') ? '' : content;
+    let displayContent = (files && files.length > 0 && content === '[Archivo adjunto]') ? '' : content;
+    if (displayContent && role === 'assistant') {
+        displayContent = stripThinkTags(displayContent);
+    }
     if (displayContent) {
         const textEl = document.createElement('div');
         textEl.className = 'msg-text';
@@ -750,10 +757,27 @@ async function sendMessage() {
                     continue;
                 }
 
+                // Detect message ID event (for forward button)
+                const msgIdMatch = data.match(/^\[MSG_ID:(\d+)\]$/);
+                if (msgIdMatch) {
+                    const msgId = parseInt(msgIdMatch[1]);
+                    aiBubble.dataset.msgId = msgId;
+                    const fwdBtn = document.createElement('button');
+                    fwdBtn.className = 'btn-forward';
+                    fwdBtn.title = 'Reenviar a Telegram';
+                    fwdBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.28-.02-.12.03-2.07 1.32-5.84 3.87-.55.38-1.05.56-1.5.55-.49-.01-1.44-.28-2.15-.51-.87-.28-1.56-.43-1.5-.91.03-.25.38-.51 1.05-.78 4.12-1.79 6.87-2.97 8.26-3.54 3.93-1.62 4.75-1.9 5.28-1.91.12 0 .37.03.54.17.14.12.18.28.2.45-.01.06.01.24 0 .37z"/></svg>';
+                    fwdBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        showForwardMenu(aiBubble, msgId);
+                    });
+                    aiBubble.appendChild(fwdBtn);
+                    continue;
+                }
+
                 fullText += data;
                 typingIndicator.hidden = true;
                 aiBubble.style.display = '';
-                streamTextEl.textContent = fullText;
+                streamTextEl.textContent = stripThinkTags(fullText);
                 scrollToBottom();
             }
         }
