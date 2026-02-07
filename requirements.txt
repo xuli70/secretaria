@@ -9,3 +9,8 @@ aiofiles==24.1.0
 openpyxl==3.1.5
 pypdf==5.1.0
 python-docx==1.1.2
+cryptography
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+google-api-python-client

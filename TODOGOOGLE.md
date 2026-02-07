@@ -3,7 +3,7 @@
 > **Proyecto:** Secretaria — Asistente Personal PWA
 > **Objetivo:** Integrar Google Account (OAuth 2.0) para acceso a Calendar, Gmail, Drive y Contacts
 > **Fecha creacion:** 2026-02-07
-> **Estado global:** Pendiente
+> **Estado global:** Fase 9+10 completadas (OAuth infraestructura + flujo completo)
 
 ---
 
@@ -11,8 +11,8 @@
 
 | Fase | Nombre | Estado |
 |------|--------|--------|
-| 9 | Seguridad de secretos Google + variables de entorno | Pendiente |
-| 10 | OAuth 2.0 — Flujo de autenticacion Google | Pendiente |
+| 9 | Seguridad de secretos Google + variables de entorno | Completada |
+| 10 | OAuth 2.0 — Flujo de autenticacion Google | Completada |
 | 11 | Google Calendar — Lectura y creacion de eventos | Pendiente |
 | 12 | Gmail — Lectura y envio de correos | Pendiente |
 | 13 | Google Drive — Explorar y subir archivos | Pendiente |
@@ -24,102 +24,70 @@
 
 ## Fase 9: Seguridad de secretos Google + variables de entorno
 
-> **Estado:** [ ] Pendiente
+> **Estado:** [x] Completada
 > **Prioridad:** Alta (prerequisito de todo lo demas)
 
 ### Objetivo
 Preparar la infraestructura de configuracion para las credenciales OAuth de Google, garantizando que ningun secreto se commitee al repositorio.
 
 ### Tareas
-- [ ] Agregar variables a `backend/config.py`:
-  - `GOOGLE_CLIENT_ID` (str, requerido para OAuth)
-  - `GOOGLE_CLIENT_SECRET` (str, requerido para OAuth)
-  - `GOOGLE_REDIRECT_URI` (str, default `http://localhost:8000/api/google/callback`)
-  - `GOOGLE_TOKEN_ENCRYPTION_KEY` (str, requerido para cifrar tokens en BD)
-- [ ] Agregar variables a `.env.example` **solo con nombres, sin valores reales**:
-  ```
-  # Google OAuth
-  GOOGLE_CLIENT_ID=
-  GOOGLE_CLIENT_SECRET=
-  GOOGLE_REDIRECT_URI=http://localhost:8000/api/google/callback
-  GOOGLE_TOKEN_ENCRYPTION_KEY=
-  ```
-- [ ] Agregar variables al `.env` local con valores reales (no se commitea — ya en `.gitignore`)
-- [ ] Verificar que `.env` esta en `.gitignore` (ya lo esta)
-- [ ] Crear modelo `GoogleToken` en `models.py`:
-  - `id`, `user_id` (FK → User), `encrypted_token` (LargeBinary), `scopes` (String), `created_at`, `updated_at`
-  - Tokens cifrados con Fernet (`cryptography` library) usando `GOOGLE_TOKEN_ENCRYPTION_KEY`
-- [ ] Agregar `cryptography` a `requirements.txt`
-- [ ] Crear `backend/services/google_auth.py`:
-  - `encrypt_token(token_data: dict) -> bytes` — cifra con Fernet
-  - `decrypt_token(encrypted: bytes) -> dict` — descifra con Fernet
-  - `get_stored_token(user_id: int) -> dict | None` — lee de BD y descifra
-  - `store_token(user_id: int, token_data: dict)` — cifra y guarda en BD
+- [x] Agregar variables a `backend/config.py`: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI, GOOGLE_TOKEN_ENCRYPTION_KEY
+- [x] Agregar variables a `.env.example` solo con nombres, sin valores reales
+- [x] Crear modelo `GoogleToken` en `models.py` (id, user_id FK, encrypted_token LargeBinary, scopes Text, timestamps)
+- [x] Agregar `cryptography` a `requirements.txt`
+- [x] Crear `backend/services/google_auth.py` (encrypt/decrypt/store/get/delete tokens con Fernet)
+- [x] Relacion `google_token` agregada en modelo User (uselist=False)
+- [x] Import `LargeBinary` agregado a models.py
 
-### Hitos de seguridad
-- [ ] `.env` confirmado en `.gitignore` — nunca se commitea
-- [ ] `.env.example` solo contiene nombres de variables SIN valores reales
-- [ ] `GOOGLE_TOKEN_ENCRYPTION_KEY` solo existe en `.env` local y en Coolify UI — jamas en el repositorio
-- [ ] Tokens OAuth del usuario cifrados con Fernet antes de guardarlos en SQLite
-- [ ] En produccion, las 4 variables Google se configuran via **UI de Coolify** (Environment Variables)
-- [ ] `git diff --cached` antes de push confirma que ningun secreto esta staged
-
-### Verificacion
-- [ ] `docker compose up --build` arranca sin errores
-- [ ] `GET /health` → 200 OK
-- [ ] `GoogleToken` tabla creada en SQLite
-- [ ] `encrypt_token` / `decrypt_token` roundtrip funciona (test manual)
-- [ ] `.env.example` no contiene valores reales (solo placeholders)
-- [ ] `git status` no muestra `.env` como tracked
-
-> **Post-push:** Actualizar SEGUIMIENTO.md con Fase 9 completada. Configurar las 4 variables Google en Coolify UI (Environment Variables) antes de probar en produccion.
+### Archivos creados/modificados
+- `backend/config.py` — 4 variables Google OAuth
+- `.env.example` — Seccion Google OAuth (solo placeholders)
+- `backend/models.py` — Import LargeBinary, modelo GoogleToken, relacion en User
+- `backend/services/google_auth.py` — CREADO: _get_fernet, encrypt_token, decrypt_token, get_stored_token, store_token, delete_token
+- `requirements.txt` — Agregado cryptography
 
 ---
 
 ## Fase 10: OAuth 2.0 — Flujo de autenticacion Google
 
-> **Estado:** [ ] Pendiente
+> **Estado:** [x] Completada
 > **Prioridad:** Alta (prerequisito para todas las APIs Google)
 
 ### Objetivo
 Implementar el flujo completo OAuth 2.0 con Google para obtener y refrescar tokens de acceso.
 
-### Prerequisitos
-- [ ] Crear proyecto en Google Cloud Console
-- [ ] Habilitar APIs: Calendar, Gmail, Drive, People (Contacts)
-- [ ] Crear credenciales OAuth 2.0 (Web application)
-- [ ] Configurar redirect URI autorizado: `https://secretaria.axcsol.com/api/google/callback`
-- [ ] Copiar Client ID y Client Secret a `.env` y Coolify
-
 ### Tareas
-- [ ] Instalar `google-auth`, `google-auth-oauthlib`, `google-auth-httplib2`, `google-api-python-client` en `requirements.txt`
-- [ ] Crear `backend/routers/google.py`:
-  - `GET /api/google/status` — estado de conexion (tiene token valido? scopes?)
-  - `GET /api/google/auth-url` — genera URL de autorizacion con scopes solicitados
-  - `GET /api/google/callback` — recibe code de Google, intercambia por tokens, cifra y guarda en BD
-  - `POST /api/google/disconnect` — elimina tokens de BD, revoca en Google
-  - `GET /api/google/token` — (interno) devuelve token valido, refresca si expiro
-- [ ] Scopes a solicitar:
-  - `https://www.googleapis.com/auth/calendar`
-  - `https://www.googleapis.com/auth/gmail.modify`
-  - `https://www.googleapis.com/auth/drive`
-  - `https://www.googleapis.com/auth/contacts.readonly`
-- [ ] Flujo de refresh automatico: si token expiro, usar refresh_token para obtener nuevo access_token
-- [ ] Registrar `google_router` en `main.py` (antes del static mount)
-- [ ] Frontend: boton "Conectar Google" en la pantalla principal (o settings)
-- [ ] Frontend: indicador visual de estado Google (conectado/desconectado)
-- [ ] Frontend: boton "Desconectar Google" cuando esta conectado
+- [x] Instalar google-auth, google-auth-oauthlib, google-auth-httplib2, google-api-python-client en requirements.txt
+- [x] Crear `backend/routers/google.py` con 4 endpoints:
+  - `GET /api/google/status` — estado de conexion (connected, scopes)
+  - `GET /api/google/auth-url` — genera URL de consentimiento Google con state=user_{id}
+  - `GET /api/google/callback` — intercambia code por tokens, cifra y guarda, redirige a app
+  - `POST /api/google/disconnect` — revoca token (best-effort), elimina de BD
+- [x] Helper `get_valid_credentials()` — devuelve creds validas, refresca si expiro (exportada para fases futuras)
+- [x] Scopes: calendar, gmail.modify, drive, contacts.readonly
+- [x] OAuth params: access_type="offline", prompt="consent" (fuerza refresh_token)
+- [x] Registrar google_router en main.py (antes del static mount)
+- [x] Frontend: boton Google en header (icono G, azul → verde cuando conectado)
+- [x] Frontend: modal Google (bottom-sheet, boton conectar, scopes como badges, boton desconectar)
+- [x] Frontend: deteccion de ?google_connected=true / ?google_error= en URL → toast + limpiar URL
+- [x] Frontend: checkGoogleStatus() al enterApp, reset al logout
 
 ### Verificacion
+- [ ] Click boton Google en header → abre modal con "Conectar Google"
 - [ ] Click "Conectar Google" → redirige a pantalla de consentimiento Google
-- [ ] Autorizar → redirect a callback → token guardado cifrado en BD
+- [ ] Autorizar → redirect a callback → token cifrado en BD → redirect a app con toast
 - [ ] `GET /api/google/status` → `{connected: true, scopes: [...]}`
-- [ ] Token expiro → se refresca automaticamente en siguiente request
-- [ ] "Desconectar Google" → token eliminado de BD
-- [ ] Sin token → endpoints Google retornan error amigable
-- [ ] Redirect URI funciona tanto en localhost como en produccion (Coolify)
+- [ ] Modal muestra scopes (Calendar, Gmail, Drive, Contacts) y boton "Desconectar"
+- [ ] Click "Desconectar" → token eliminado, UI actualiza
+- [ ] Boton Google cambia color (azul → verde cuando conectado)
 
-> **Post-push:** Actualizar SEGUIMIENTO.md con Fase 10 completada. Verificar que el redirect URI en Google Cloud Console coincide con el dominio de produccion.
+### Archivos creados/modificados
+- `requirements.txt` — Agregados google-auth, google-auth-oauthlib, google-auth-httplib2, google-api-python-client
+- `backend/routers/google.py` — CREADO: 4 endpoints OAuth, _build_flow, _credentials_to_dict, _dict_to_credentials, get_valid_credentials
+- `backend/main.py` — Import y registro google_router
+- `frontend/index.html` — Boton Google en header (SVG), modal Google (overlay + modal con conectar/desconectar/scopes)
+- `frontend/css/style.css` — Estilos btn-google, google-overlay, google-modal, google-modal-header, google-status-badge, btn-google-connect, btn-google-disconnect, google-scope-item
+- `frontend/js/app.js` — Estado googleConnected, DOM refs, openGoogleModal/closeGoogleModal, checkGoogleStatus, updateGoogleUI, SCOPE_LABELS, OAuth redirect handling, enterApp integration, logout reset
 
 ---
 

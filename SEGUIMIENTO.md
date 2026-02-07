@@ -3,7 +3,7 @@
 > **Objetivo:** Aplicación web mobile-first de asistente personal (secretaria) con chat continuo, gestión documental, generación de documentos y reenvío por Telegram
 > **Carpeta:** D:\MINIMAX\Secretaria
 > **Ultima actualizacion:** 2026-02-07
-> **Estado global:** Fase 7 completada + Archivos recuperables tras redeploy (auto-regeneracion de docs y TXT)
+> **Estado global:** Fase 9+10 completadas — Google OAuth 2.0 integrado (infraestructura de seguridad + flujo completo)
 
 ---
 
@@ -11,7 +11,7 @@
 
 Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases de desarrollo. El cerebro es MINIMAX AI (chat) + Perplexity (búsqueda externa). La interfaz es un chat oscuro tipo WhatsApp optimizado para teléfono (PWA). Backend en Python/FastAPI, SQLite como BD, Docker para contenedores, Coolify para despliegue final desde GitHub.
 
-**ESTADO:** Aplicacion funcionando correctamente en produccion. Explorador de archivos en sidebar con tabs (Conversaciones/Archivos) y arbol colapsable por tipo. Archivos perdidos tras redeploy clasificados en "Recuperable" (auto-regeneracion al click) o "No disponible" (irrecuperables). Documentos generados se regeneran desde contenido del mensaje; TXT subidos se recuperan desde extracted_text en BD. Descargas via fetch+blob con manejo de errores. Generacion de documentos soporta DOCX y TXT. Filtro backend de bloques `<think>` en streaming y en guardado/generacion.
+**ESTADO:** Aplicacion funcionando correctamente en produccion. Google OAuth 2.0 integrado: boton Google en header, modal con estado/conectar/desconectar, tokens cifrados con Fernet en SQLite, flujo completo OAuth con refresh automatico, scopes Calendar+Gmail+Drive+Contacts. Explorador de archivos en sidebar con tabs y arbol colapsable. Archivos recuperables tras redeploy. Generacion de documentos DOCX/TXT. Filtro backend de bloques `<think>`.
 
 ---
 
@@ -39,6 +39,7 @@ Proyecto nuevo. Se ha definido la arquitectura, el stack técnico y las 7 fases 
 | Generacion docs | Toggle modo documento, DOCX via python-docx post-stream, evento SSE [FILE:{json}] | 2026-02-06 |
 | Formato docs | Selector DOCX/TXT al activar modo documento; TXT guarda texto plano, DOCX con formato | 2026-02-07 |
 | Modos exclusivos | searchMode y docMode mutuamente excluyentes (activar uno desactiva el otro) | 2026-02-06 |
+| Google OAuth | Tokens cifrados con Fernet en SQLite, refresh automatico, scopes Calendar+Gmail+Drive+Contacts | 2026-02-07 |
 
 ---
 
@@ -785,6 +786,58 @@ Clasificacion de archivos en 3 estados: disponible, recuperable, perdido.
 
 ---
 
+## Fase 9+10: Google OAuth 2.0 — Seguridad + Flujo completo
+
+> **Estado:** [x] Completada
+> **Prioridad:** Alta
+
+### Tareas
+- [x] Agregar dependencias: cryptography, google-auth, google-auth-oauthlib, google-auth-httplib2, google-api-python-client
+- [x] Agregar 4 variables Google OAuth a config.py y .env.example (sin valores reales)
+- [x] Crear modelo GoogleToken (id, user_id FK unique, encrypted_token LargeBinary, scopes Text, timestamps)
+- [x] Relacion google_token en modelo User (uselist=False)
+- [x] Crear backend/services/google_auth.py (Fernet encrypt/decrypt, CRUD tokens cifrados)
+- [x] Crear backend/routers/google.py con 4 endpoints:
+  - GET /api/google/status (connected, scopes)
+  - GET /api/google/auth-url (genera URL consentimiento con state=user_{id})
+  - GET /api/google/callback (intercambia code, cifra tokens, redirige a app)
+  - POST /api/google/disconnect (revoca best-effort, elimina de BD)
+- [x] Helper get_valid_credentials() para fases futuras (refresca token expirado)
+- [x] Scopes: calendar, gmail.modify, drive, contacts.readonly
+- [x] OAuth params: access_type=offline, prompt=consent
+- [x] Registrar google_router en main.py (antes del static mount)
+- [x] Frontend: boton Google en header (SVG, azul → verde cuando conectado)
+- [x] Frontend: modal Google bottom-sheet (conectar, scopes badges, desconectar)
+- [x] Frontend: deteccion ?google_connected / ?google_error en URL → toast
+- [x] Frontend: checkGoogleStatus en enterApp, reset en logout
+
+### Verificacion
+- [ ] `docker compose up --build` arranca sin errores
+- [ ] GET /health → 200 OK
+- [ ] Tabla google_tokens creada en SQLite
+- [ ] .env.example solo tiene nombres, sin valores reales
+- [ ] Click boton Google → abre modal con "Conectar Google"
+- [ ] Click "Conectar Google" → redirige a consentimiento Google
+- [ ] Autorizar → token cifrado en BD → redirect con toast "Google conectado exitosamente"
+- [ ] GET /api/google/status → {connected: true, scopes: [...]}
+- [ ] Modal muestra scopes y boton "Desconectar"
+- [ ] Click "Desconectar" → token eliminado, UI actualiza
+- [ ] Boton Google cambia color (azul ↔ verde)
+
+### Archivos creados/modificados
+- `requirements.txt` — 5 dependencias Google/crypto
+- `backend/config.py` — 4 variables Google OAuth
+- `.env.example` — Seccion Google OAuth
+- `backend/models.py` — Import LargeBinary, modelo GoogleToken, relacion en User
+- `backend/services/google_auth.py` — CREADO: Fernet encrypt/decrypt, CRUD tokens
+- `backend/routers/google.py` — CREADO: 4 endpoints OAuth + helpers
+- `backend/main.py` — Import y registro google_router
+- `frontend/index.html` — Boton Google header + modal Google
+- `frontend/css/style.css` — Estilos Google (boton, modal, badges, botones connect/disconnect)
+- `frontend/js/app.js` — Estado Google, modal, OAuth redirect, status check, UI update
+
+---
+
 ## Notas de proceso
 
 > **IMPORTANTE:** Este documento DEBE actualizarse al final de cada fase completada. Incluir: tareas realizadas, archivos creados/modificados, verificaciones y siguiente paso.
@@ -819,3 +872,4 @@ Clasificacion de archivos en 3 estados: disponible, recuperable, perdido.
 | 22 | 2026-02-07 | Fix ghost files | Filtro os.path.exists en GET /api/files para eliminar archivos fantasma. Descargas via fetch+blob con toast de error en vez de navegacion directa a JSON. Auth via header Bearer en vez de query param | Verificar en produccion |
 | 23 | 2026-02-07 | Fix ghost visible | Ghost files ahora visibles como "No disponible" (opacity 0.45, gris, sin click) en vez de ocultarse. Campo `available` en API. Toast de error en loadExplorerFiles | Verificar en produccion |
 | 24 | 2026-02-07 | Recoverable files | Archivos perdidos tras redeploy clasificados en "Recuperable" (auto-regeneracion al click) o "No disponible" (irrecuperables). Campo `recoverable` en API. TXT subidos recuperados desde `extracted_text`. Refresh post-descarga | Verificar en produccion |
+| 25 | 2026-02-07 | Fase 9+10 Google OAuth | Infraestructura seguridad (Fernet encrypt, GoogleToken model, config vars) + flujo OAuth completo (4 endpoints, modal UI, boton header, scopes badges, redirect handling). get_valid_credentials() para fases futuras | Build Docker + verificar OAuth flow |

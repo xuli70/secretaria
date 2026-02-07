@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, Integer, Text, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, Text, DateTime, ForeignKey, LargeBinary
 from sqlalchemy.orm import relationship
 
 from backend.database import Base
@@ -21,6 +21,7 @@ class User(Base):
 
     conversations = relationship("Conversation", back_populates="user")
     telegram_contacts = relationship("TelegramContact", back_populates="user")
+    google_token = relationship("GoogleToken", back_populates="user", uselist=False)
 
 
 class Conversation(Base):
@@ -94,3 +95,16 @@ class TelegramSend(Base):
 
     message = relationship("Message", back_populates="telegram_sends")
     contact = relationship("TelegramContact", back_populates="sends")
+
+
+class GoogleToken(Base):
+    __tablename__ = "google_tokens"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
+    encrypted_token = Column(LargeBinary, nullable=False)
+    scopes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
+
+    user = relationship("User", back_populates="google_token")

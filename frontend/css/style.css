@@ -1296,6 +1296,151 @@ body.selection-mode .msg-bubble[data-msg-id].selected::after {
     text-align: center;
 }
 
+/* === Google Button === */
+.btn-google {
+    color: #4285f4;
+}
+
+.btn-google:hover {
+    color: #5a9cf6;
+    background: rgba(66, 133, 244, 0.1);
+}
+
+.btn-google.connected {
+    color: var(--accent);
+}
+
+.btn-google.connected:hover {
+    color: var(--accent-hover);
+    background: rgba(0, 168, 132, 0.1);
+}
+
+/* === Google Modal === */
+.google-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 50;
+}
+
+.google-overlay.active {
+    display: block;
+}
+
+.google-modal {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-height: 70vh;
+    background: var(--bg-secondary);
+    border-radius: 16px 16px 0 0;
+    z-index: 51;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.google-modal.active {
+    display: flex;
+}
+
+.google-modal-header {
+    display: flex;
+    align-items: center;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.google-modal-title {
+    font-size: 17px;
+    font-weight: 600;
+    color: #4285f4;
+    flex: 1;
+}
+
+.google-modal-body {
+    padding: 20px 16px;
+    overflow-y: auto;
+}
+
+.google-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+
+.google-section-text {
+    font-size: 14px;
+    color: var(--text-secondary);
+    text-align: center;
+    line-height: 1.5;
+}
+
+.btn-google-connect {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: var(--radius);
+    background: #4285f4;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-google-connect:hover {
+    background: #5a9cf6;
+}
+
+.google-status-badge {
+    font-size: 13px;
+    color: var(--accent);
+    background: rgba(0, 168, 132, 0.15);
+    padding: 4px 12px;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.google-scopes-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    width: 100%;
+}
+
+.google-scope-item {
+    font-size: 12px;
+    color: var(--text-primary);
+    background: var(--bg-input);
+    padding: 6px 12px;
+    border-radius: 16px;
+}
+
+.btn-google-disconnect {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--danger);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--danger);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.btn-google-disconnect:hover {
+    background: var(--danger);
+    color: #fff;
+}
+
 /* === Mobile (< 768px) === */
 @media (max-width: 768px) {
     .sidebar {

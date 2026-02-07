@@ -25,6 +25,12 @@ class Settings:
     APP_USERNAME: str = os.getenv("APP_USERNAME", "")
     APP_PASSWORD: str = os.getenv("APP_PASSWORD", "")
 
+    # Google OAuth
+    GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")
+    GOOGLE_CLIENT_SECRET: str = os.getenv("GOOGLE_CLIENT_SECRET", "")
+    GOOGLE_REDIRECT_URI: str = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8000/api/google/callback")
+    GOOGLE_TOKEN_ENCRYPTION_KEY: str = os.getenv("GOOGLE_TOKEN_ENCRYPTION_KEY", "")
+
     # App
     APP_PORT: int = int(os.getenv("APP_PORT", "8000"))
     DATA_DIR: str = os.getenv("DATA_DIR", "/data")

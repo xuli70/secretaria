@@ -86,6 +86,9 @@
                 <button id="btn-telegram" class="btn-icon btn-telegram" title="Telegram">
                     <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.28-.02-.12.03-2.07 1.32-5.84 3.87-.55.38-1.05.56-1.5.55-.49-.01-1.44-.28-2.15-.51-.87-.28-1.56-.43-1.5-.91.03-.25.38-.51 1.05-.78 4.12-1.79 6.87-2.97 8.26-3.54 3.93-1.62 4.75-1.9 5.28-1.91.12 0 .37.03.54.17.14.12.18.28.2.45-.01.06.01.24 0 .37z"/></svg>
                 </button>
+                <button id="btn-google" class="btn-icon btn-google" title="Google">
+                    <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12.545 10.239v3.821h5.445c-.712 2.315-2.647 3.972-5.445 3.972a6.033 6.033 0 110-12.064c1.498 0 2.866.549 3.921 1.453l2.814-2.814A9.969 9.969 0 0012.545 2C7.021 2 2.543 6.477 2.543 12s4.478 10 10.002 10c8.396 0 10.249-7.85 9.426-11.748l-9.426-.013z"/></svg>
+                </button>
                 <button id="btn-logout" class="btn-icon" title="Salir">&#9211;</button>
             </div>
 
@@ -159,6 +162,26 @@
             <input type="text" id="tg-chat-id" placeholder="Chat ID" required>
             <button type="submit" class="btn-tg-add" title="Agregar">+</button>
         </form>
+    </div>
+
+    <!-- Google Modal -->
+    <div id="google-overlay" class="google-overlay"></div>
+    <div id="google-modal" class="google-modal">
+        <div class="google-modal-header">
+            <span class="google-modal-title">Google Account</span>
+            <button id="btn-close-google" class="btn-icon" title="Cerrar">&times;</button>
+        </div>
+        <div class="google-modal-body">
+            <div id="google-disconnected" class="google-section">
+                <p class="google-section-text">Conecta tu cuenta de Google para habilitar Calendar, Gmail, Drive y Contacts.</p>
+                <button id="btn-google-connect" class="btn-google-connect">Conectar Google</button>
+            </div>
+            <div id="google-connected" class="google-section" hidden>
+                <div class="google-status-badge">Conectado</div>
+                <div id="google-scopes-list" class="google-scopes-list"></div>
+                <button id="btn-google-disconnect" class="btn-google-disconnect">Desconectar</button>
+            </div>
+        </div>
     </div>
 
     <div id="toast-container" class="toast-container"></div>

@@ -147,6 +147,9 @@ let isUploading = false;
 // --- Telegram state ---
 let telegramContacts = [];
 
+// --- Google state ---
+let googleConnected = false;
+
 // --- File explorer state ---
 let activeTab = 'conversations';
 let explorerFiles = [];
@@ -186,6 +189,14 @@ const selectionCount = $('#selection-count');
 const btnSelectionClose = $('#btn-selection-close');
 const btnSelectionForward = $('#btn-selection-forward');
 const toastContainer = $('#toast-container');
+const btnGoogle = $('#btn-google');
+const googleOverlay = $('#google-overlay');
+const googleModal = $('#google-modal');
+const googleDisconnected = $('#google-disconnected');
+const googleConnectedSection = $('#google-connected');
+const googleScopesList = $('#google-scopes-list');
+const btnGoogleConnect = $('#btn-google-connect');
+const btnGoogleDisconnect = $('#btn-google-disconnect');
 const fileExplorer = $('#file-explorer');
 const fileExplorerEmpty = $('#file-explorer-empty');
 const sidebarTabs = document.querySelectorAll('.sidebar-tab');
@@ -632,6 +643,81 @@ async function deleteTelegramContact(id) {
     }
 }
 
+// --- Google ---
+
+function openGoogleModal() {
+    googleModal.classList.add('active');
+    googleOverlay.classList.add('active');
+    checkGoogleStatus();
+}
+
+function closeGoogleModal() {
+    googleModal.classList.remove('active');
+    googleOverlay.classList.remove('active');
+}
+
+btnGoogle.addEventListener('click', openGoogleModal);
+googleOverlay.addEventListener('click', closeGoogleModal);
+$('#btn-close-google').addEventListener('click', closeGoogleModal);
+
+async function checkGoogleStatus() {
+    try {
+        const data = await apiGet('/api/google/status');
+        googleConnected = data.connected;
+        updateGoogleUI(data);
+    } catch {
+        googleConnected = false;
+        updateGoogleUI({ connected: false, scopes: [] });
+    }
+}
+
+const SCOPE_LABELS = {
+    'https://www.googleapis.com/auth/calendar': 'Calendar',
+    'https://www.googleapis.com/auth/gmail.modify': 'Gmail',
+    'https://www.googleapis.com/auth/drive': 'Drive',
+    'https://www.googleapis.com/auth/contacts.readonly': 'Contacts',
+};
+
+function updateGoogleUI(data) {
+    btnGoogle.classList.toggle('connected', data.connected);
+    if (data.connected) {
+        googleDisconnected.hidden = true;
+        googleConnectedSection.hidden = false;
+        googleScopesList.innerHTML = '';
+        (data.scopes || []).forEach(scope => {
+            const label = SCOPE_LABELS[scope] || scope.split('/').pop();
+            const el = document.createElement('span');
+            el.className = 'google-scope-item';
+            el.textContent = label;
+            googleScopesList.appendChild(el);
+        });
+    } else {
+        googleDisconnected.hidden = false;
+        googleConnectedSection.hidden = true;
+    }
+}
+
+btnGoogleConnect.addEventListener('click', async () => {
+    try {
+        const data = await apiGet('/api/google/auth-url');
+        window.location.href = data.auth_url;
+    } catch (err) {
+        showToast('Error: ' + err.message);
+    }
+});
+
+btnGoogleDisconnect.addEventListener('click', async () => {
+    if (!confirm('Desconectar tu cuenta de Google?')) return;
+    try {
+        await apiPost('/api/google/disconnect', {});
+        googleConnected = false;
+        updateGoogleUI({ connected: false, scopes: [] });
+        showToast('Google desconectado');
+    } catch (err) {
+        showToast('Error: ' + err.message);
+    }
+});
+
 // --- Selection Mode ---
 
 function enterSelectionMode(initialBubble) {
@@ -1075,9 +1161,12 @@ $('#btn-logout').addEventListener('click', () => {
     conversations = [];
     telegramContacts = [];
     explorerFiles = [];
+    googleConnected = false;
     activeTab = 'conversations';
     clearPendingFile();
     closeTelegramModal();
+    closeGoogleModal();
+    btnGoogle.classList.remove('connected');
     // Reset sidebar to conversations tab
     sidebarTabs.forEach(t => t.classList.toggle('active', t.dataset.tab === 'conversations'));
     convList.hidden = false;
@@ -1134,6 +1223,17 @@ function enterApp() {
     loadConversations();
     loadTelegramContacts();
     loadExplorerFiles();
+    checkGoogleStatus();
+
+    // Detect Google OAuth redirect params
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('google_connected') === 'true') {
+        showToast('Google conectado exitosamente');
+        window.history.replaceState({}, '', window.location.pathname);
+    } else if (params.get('google_error')) {
+        showToast('Error conectando Google: ' + params.get('google_error'));
+        window.history.replaceState({}, '', window.location.pathname);
+    }
 }
 
 function init() {
