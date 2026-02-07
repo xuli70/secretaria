@@ -1,5 +1,6 @@
 import asyncio
 import os
+import re
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -355,6 +356,9 @@ async def send_message(
             safe_chunk = chunk.replace('\n', '\\n')
             yield f"data: {safe_chunk}\n\n"
 
+        # Clean any residual <think> blocks before saving/generating
+        clean_response = re.sub(r'<think>[\s\S]*?</think>', '', full_response).strip()
+
         # Save assistant response in a new DB session
         from backend.database import SessionLocal
         import json as _json
@@ -363,7 +367,7 @@ async def send_message(
             assistant_msg = Message(
                 conversation_id=conv_id,
                 role="assistant",
-                content=full_response,
+                content=clean_response,
                 model_used=model_label,
             )
             save_db.add(assistant_msg)
@@ -373,10 +377,10 @@ async def send_message(
             yield f"data: [MSG_ID:{assistant_msg.id}]\n\n"
 
             # Generate DOCX if in document mode
-            if generate_doc and full_response.strip():
+            if generate_doc and clean_response:
                 save_dir = os.path.join(settings.DATA_DIR, "generados")
                 title = content[:60] if content else "Documento"
-                filepath, filename = generate_docx(full_response, title, save_dir)
+                filepath, filename = generate_docx(clean_response, title, save_dir)
                 size = os.path.getsize(filepath)
 
                 doc_file = File(
