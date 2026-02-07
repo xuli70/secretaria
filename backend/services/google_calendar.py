@@ -74,6 +74,9 @@ def _parse_datetime(dt_str: str) -> dict:
     # If it looks like a date-only string (YYYY-MM-DD), use 'date' field
     if len(dt_str) == 10:
         return {"date": dt_str}
+    # Ensure timezone info is included for dateTime (Google API requires it)
+    if "+" not in dt_str and "Z" not in dt_str and not dt_str.endswith("z"):
+        return {"dateTime": dt_str, "timeZone": "Europe/Madrid"}
     return {"dateTime": dt_str}
 
 
